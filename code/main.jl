@@ -16,8 +16,20 @@ if run_type != 3
 
 # Load data for real-time out-of-sample
 else
+    # Load general info
     MNEMONIC, nM, nQ, transf, transf_annex = read_data_info(data_info_path);
+
+    # Load Fred data
     df_fred_vintages = get_fred_vintages(fred_data_path, start_sample, end_sample, oos_start_date);
+
+    # Load local data
+    df_local_vintages = get_local_vintages(local_data_path, oos_start_date);
+
+    # Merge vintages
+    df_vintages = outerjoin(df_fred_vintages, df_local_vintages, on=[:date, :vintage_id]);
+
+    # TBA: transformations
+    # TBA: convert to dataflow (below)
 end
 
 # ----------------------------------------------------------------------------------------------------------------------

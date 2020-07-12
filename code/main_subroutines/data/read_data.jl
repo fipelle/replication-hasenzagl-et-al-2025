@@ -60,8 +60,14 @@ function read_data(data_path)
 
      # MNEMONIC
      if nM != 0 || nQ != 0
-          info_data = DataFrame(XLSX.readtable(data_path, "transf")...);
-          MNEMONIC  = info_data[1:end, 2] |> Array{String,1};
+         try
+              info_data = DataFrame(XLSX.readtable(data_path, "transf")...);
+              MNEMONIC  = info_data[1:end, 2] |> Array{String,1};
+
+          catch
+              print("There are no mnemonics in $data_path \n");
+              MNEMONIC = [];
+          end
      end
 
      return data, date, nM, nQ, MNEMONIC;

@@ -1,12 +1,12 @@
 """
-    get_fred_vintages(fred_data_path::String, start_sample::DateTime, end_sample::DateTime, oos_start_date::DateTime)
+    get_fred_vintages(fred_data_path::String, start_sample::Date, end_sample::Date, oos_start_date::Date)
 
-Build the data vintages from Fred data.
+Build data vintages from Fred data.
 
 The code depends on FredData.jl. Details on the parameters can be found at the link below.
 https://research.stlouisfed.org/docs/api/fred/series_observations.html#Description
 """
-function get_fred_vintages(fred_data_path::String, start_sample::DateTime, end_sample::DateTime, oos_start_date::DateTime)
+function get_fred_vintages(fred_data_path::String, start_sample::Date, end_sample::Date, oos_start_date::Date)
 
     # Initialise FredData instance
     f = Fred(); # FredData must be correctly setup to work
@@ -43,221 +43,105 @@ function get_fred_vintages(fred_data_path::String, start_sample::DateTime, end_s
 
         # Rename value to tickers[i]
         rename!(ith_data, (:value => Symbol(tickers[i])));
+        rename!(ith_data, (:realtime_start => :vintage_id));
+
+        #=
+        Quarterly data is not aligned correctly at source (e.g., Q1 has Jan as reference period).
+        This block of code fixes it.
+        =#
+        if frequency[i] == "q"
+            ith_data[!,:date] = Dates.firstdayofmonth.(ith_data[!,:date]);
+            ith_data[!,:date] .+= Month(2);
+        end
+
+        # Set reference periods to eom format
+        ith_data[!,:date] = Dates.lastdayofmonth.(ith_data[!,:date]);
 
         # Store new data
         if i == 1
             fred_vintages = copy(ith_data);
         else
-            fred_vintages = outerjoin(fred_vintages, ith_data, on=[:date, :realtime_start]);
+            fred_vintages = outerjoin(fred_vintages, ith_data, on=[:date, :vintage_id]);
         end
     end
 
+    # Return output
     return fred_vintages;
 end
 
-
-
-
-
-
-
-
-
-
-
-
-# Function to merge Haver Data from excel with Fred Data stored in a DataFrame
 """
-    merge_haverexcl_fred(data_path::String, AllFred::DataFrame)
-        This Function merges Haver Data downloaded in Excel with Fred Data in a DataFrame.
-        The output will be another DataFrame.
+    get_local_vintages(local_data_path::String, oos_start_date::Date)
 
-        Inputs:
-            data_path: path to the excel file with Haver Data
-            AllFred: data downloaded from Fred and stored in a DataFrame
-        Outputs:
-            AllData: a dataframe
+Build data vintages from local data.
 """
-function merge_haverexcl_fred(data_path::String, AllFred::DataFrame; quart = false)
-    # Code Start:
-    # Import monthly data
-    f_monthly    = DataFrame(XLSX.readtable(data_path, "monthly")...);
-    # Import quarterly data
-    if quart
-        f_quarterly    = DataFrame(XLSX.readtable(data_path, "quarterly")...);
-    end
-    # Import calendar
-    calendar = DataFrame(XLSX.readtable(data_path, "calendar")...);
-    # Move the header as first row of the calendar
-    ForDates = names(calendar);
-    ForDates = String.(ForDates);
-    calendar = calendar |> Array{Any,2};
-    # Transpose to put right header
-    calendar = permutedims(calendar, (2,1));
-    calendar = [ForDates calendar];
-    calendar = convert(DataFrame,calendar);
-    # Put right header
-    thisnames = (calendar |> Array{Any,2})[1,:];
-    thisnames = Symbol.(thisnames[:,1]);
-    calendar = calendar[2:end,:];
-    names!(calendar, thisnames);
-    calendar[:,1] = map(x->parse(Float64,x),calendar[:,1]);
-    calendar[:,1] = convert(Array{Any,1},calendar[:,1]);
-    calendar = excel2datetime(calendar);
-    # Convert to datetime
-    for j = 1:size(calendar,1)
-        for i =1:size(calendar,2)
-            # Here we use try, as quarterly vars would have missing values...
-            try
-                calendar[j,i] = Date(Dates.julian2datetime(float(calendar[j,i])[]));
-            catch
-            end
+function get_local_vintages(local_data_path::String, oos_start_date::Date)
+
+    # Initialise final output
+    local_vintages = DataFrame();
+
+    # Load local data
+    data, date, nM_local, nQ_local, MNEMONIC_local = read_data(local_data_path);
+
+    # Load local calendar of releases
+    raw_calendar = DataFrame(XLSX.readtable(local_data_path, "calendar")...);
+    reference    = vcat([Dates.Date(names(raw_calendar)[1+i]) for i=1:size(raw_calendar,2)-1]...);
+    releases     = raw_calendar[:, 2:end] |> Array{Union{Missing,Date},2};
+
+    # Match reference with date
+    ind_dates = [];
+    ind_dataset = [];
+    for i=1:length(reference)
+        ith_position = findall(date .== reference[i]);
+        if length(ith_position) > 0
+            push!(ind_dates, i);
+            push!(ind_dataset, ith_position[1]);
         end
     end
-    # Devide in Monthly and Quarterly.
-    println("")
-    printstyled("!!! Note: in the calendar it is assumed that first there are monthly and then quarterly vars with same order !!!", color = :yellow)
-    println("")
-    N_monthly = size(f_monthly,2)-2;
-    TempcalendarA = calendar[:,1:N_monthly+1];
-    # Now we need to stack all the dates in one unique column
-    calendarA = TempcalendarA[:,1:2]
-    namess = names(calendarA);
-    namess[1] = Symbol("date");
-    namess[2] = Symbol("realtime_start");
-    names!(calendarA, namess);
-    namess = names(TempcalendarA);
-    namess[1] = Symbol("date");
-    names!(TempcalendarA, namess);
-    for j = 3:size(TempcalendarA,2)
-        # need to change names in Tempcalendar accordingly to stack them
-        namess[j-1] = Symbol("Dontcare",j);
-        namess[j] = Symbol("realtime_start");
-        names!(TempcalendarA, namess);
-        #global calendarA
-        calendarA = [calendarA;TempcalendarA[:,[1,j]]]
-    end
-    # Remove Duplicates if present
-    calendarA = unique(calendarA,[1,2]);
-    # Quarterly - same story
-    if quart
-        End_Quart = (size(f_quarterly,2)-2) + (N_monthly+1);
-        Index_Quarterly = sort(push!(collect(N_monthly+2:End_Quart),1));
-        TempcalendarB = calendar[:,Index_Quarterly];
-        # Now we need to stack all the dates in one unique column
-        calendarB = TempcalendarB[:,1:2];
-        namess = names(calendarB);
-        namess[1] = Symbol("date");
-        namess[2] = Symbol("realtime_start");
-        names!(calendarB, namess);
-        namess = names(TempcalendarB);
-        namess[1] = Symbol("date");
-        names!(TempcalendarB, namess);
-        for j = 3:size(TempcalendarB,2)
-            # need to change names in Tempcalendar accordingly to stack them
-            namess[j-1] = Symbol("Dontcare",j);
-            namess[j] = Symbol("realtime_start");
-            names!(TempcalendarB, namess);
-            #global calendarB
-            calendarB = [calendarB;TempcalendarB[:,[1,j]]];
-        end
-        # Remove Duplicates if present
-        calendarB = unique(calendarB,[1,2]);
-    end
 
-    # Now we need to merge it with actual data
-    # Monthly
-    ForCalendarA = f_monthly[:,2:end];
-    #ForCalendarA[:,1] = excel2datetime(ForCalendarA[:,1]);
-    ForCalendarA[:,1] = ForCalendarA[:,1] |> Array{Union{Missing, Date},1};
-    #for i = 1:size(ForCalendarA,1)
-    #    # Again to deal with missings/#NA
-    #    if ForCalendarA[i,1] !== missing
-    #        ForCalendarA[i,1] = Date(ForCalendarA[i,1]);
-    #    end
-    #end
-    namess = names(ForCalendarA);
-    namess[1] = Symbol("date");
-    names!(ForCalendarA, namess);
-    # We need to merge 1 var at a time
-    FinalA = DataFrame()
-    for i = 2:size(ForCalendarA,2)
-        #global namess, FinalA
-        TempForCalendarA = TempcalendarA[:,[1,i]]
-        namess = names(TempForCalendarA);
-        namess[2] = Symbol("realtime_start");
-        names!(TempForCalendarA, namess);
-        TempForCalendarA = join(TempForCalendarA, ForCalendarA[:,[1,i]], on = Symbol("date"), kind = :outer);
-        if i == 2
-            FinalA = join(calendarA, TempForCalendarA, on = [Symbol("date"), Symbol("realtime_start")], kind = :outer);
+    min_ind_dates = minimum(ind_dates);
+    min_ind_dataset = minimum(ind_dataset);
+
+    # Cut reference and releases
+    reference = reference[ind_dates];
+    releases = releases[:, ind_dates];
+
+    # Initialise final output
+    local_vintages = DataFrame();
+
+    # Loop over local series
+    for i=1:nM_local+nQ_local
+
+        # Data excluding initial datapoints
+        ith_values = Array{Union{Missing, Float64}}(data[ind_dataset,i]);
+        ith_data = DataFrame(:vintage_id => releases[i,:], :date => reference, Symbol(MNEMONIC_local[i]) => ith_values);
+
+        # Initial datapoints (pre-calendar)
+        if min_ind_dataset > 1
+            ith_values_init = Array{Union{Missing, Float64}}(data[1:min_ind_dataset-1,i]);
+            ith_releases_init = [minimum(skipmissing(ith_data[!,:vintage_id])) for j=1:min_ind_dataset-1];
+            ith_data_init =  DataFrame(:vintage_id => ith_releases_init, :date => date[1:min_ind_dataset-1], Symbol(MNEMONIC_local[i]) => ith_values_init);
+            ith_data = vcat(ith_data_init, ith_data);
+        end
+
+        # Skip releases of missings (i.e., fake releases for quarterly data)
+        ith_data = ith_data[findall(.~ismissing.(ith_data[!,Symbol(MNEMONIC_local[i])])), :];
+
+        # Correct vintage_id
+        ith_data[ith_data[!, :vintage_id] .< oos_start_date, :vintage_id] .= oos_start_date;
+
+        # Set reference periods to eom format
+        ith_data[!,:date] = Dates.lastdayofmonth.(ith_data[!,:date]);
+
+        # Store new data
+        if i == 1
+            local_vintages = copy(ith_data);
         else
-            FinalA = join(FinalA, TempForCalendarA, on = [Symbol("date"), Symbol("realtime_start")], kind = :outer);
+            local_vintages = outerjoin(local_vintages, ith_data, on=[:date, :vintage_id]);
         end
     end
 
-    if quart
-        # Quarterly
-        ForCalendarB = f_quarterly[:,2:end];
-        ForCalendarB[:,1] = ForCalendarB[:,1] |> Array{Union{Missing, Date},1};
-        #ForCalendarB[:,1] = excel2datetime(ForCalendarB[:,1]);
-        #for i = 1:ForCalendarBze(ForCalendarB,1)
-        #    # Again to deal with missings/#NA
-        #    try
-        #        ForCalendarB[i,1] = Date(ForCalendarB[i,1][]);
-        #    catch
-        #    end
-        #end
-        namess = names(ForCalendarB);
-        namess[1] = Symbol("date");
-        names!(ForCalendarB, namess);
-        # We need to merge 1 var at a time
-        FinalB = DataFrame()
-        for i = 2:size(ForCalendarB,2)
-            #global namess, FinalB
-            TempForCalendarB = TempcalendarB[:,[1,i]]
-            namess = names(TempForCalendarB);
-            namess[2] = Symbol("realtime_start");
-            names!(TempForCalendarB, namess);
-            TempForCalendarB = join(TempForCalendarB, ForCalendarB[:,[1,i]], on = Symbol("date"), kind = :outer);
-            if i == 2
-                FinalB = join(calendarB, TempForCalendarB, on = [Symbol("date"), Symbol("realtime_start")], kind = :outer);
-            else
-                FinalB = join(FinalB, TempForCalendarB, on = [Symbol("date"), Symbol("realtime_start")], kind = :outer);
-            end
-        end
-    end
-
-    # Finally merge with Fred data
-    AllFred[:,1] = convert(Array{Any,1},AllFred[:,1])
-    AllFred[:,2] = convert(Array{Any,1},AllFred[:,2])
-    AllData = join(AllFred, FinalA, on = [:realtime_start, :date], kind = :outer)
-    if quart
-        AllData = join(AllData, FinalB, on = [:realtime_start, :date], kind = :outer)
-    end
-    # Set #NA to missing
-    # for i = 1:size(AllData,1)
-    #     if isequal(typeof(AllData[i,1]),DataValues.DataValue{Union{}})
-    #         AllData[i,1] = missing
-    #     end
-    #     if isequal(typeof(AllData[i,2]),DataValues.DataValue{Union{}}) | isequal(typeof(AllData[i,2]),DataValues.DataValue{Any})
-    #         AllData[i,2] = missing
-    #     end
-    # end
-    # Convert to Date
-    AllData[:,1] = convert(Array{Union{Date, Missings.Missing},1},AllData[:,1])
-    AllData[:,2] = convert(Array{Union{Date, Missings.Missing},1},AllData[:,2])
-    # Drop missing values if missings in realtime_start and also in vars columns
-    ind_missing = findall(ismissing.(AllData[:,1]));
-    for i = 1:size(ind_missing,1)
-        aai = AllData[ind_missing[i],:] |> Array{Any,1}
-        if sum(aai.===missing) == size(AllData,2) - 1
-            # Move to missing in dates
-            AllData[ind_missing[i],2] = missing;
-        end
-    end
-    # Drop all missing values in date
-    AllData = AllData[AllData[:,2].!==missing,:]
-    return AllData
+    # Return output
+    return local_vintages;
 end
 
 # Based on the function get_dataflow(), gets Dataframe and outputs Arrays of vintages
@@ -658,23 +542,3 @@ function get_dataflow_target_rev(data::DataFrame, Transform::Array{String,1}, h_
     end
     return data_revtr, data_revtr_year, date_revtr, date_revtr_year, calendar_revtr;
 end
-
-# Subfunctions:
-function excel2datetime(A)
-    #=
-    Filename: excel2datetime.jl
-    Author: Thomas Hasenzagl, thomas.hasenzagl@gmail.com
-    Date: 10/01/2016
-    =#
-        ncols = size(A,2)
-        nrows = size(A,1)
-
-        for row in 1:nrows
-            for col in 1:ncols
-                if ismissing(A[row,col]) == false
-                    A[row,col] = A[row,col] + Dates.datetime2julian(DateTime(1899,12,30))
-                end
-            end
-        end
-        return A
-    end

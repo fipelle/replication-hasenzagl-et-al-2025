@@ -62,11 +62,11 @@ run_type = 3;
 res_name = "";
 
 # when run_type is equal to 2 or 3 this is the start date for the OOS
-oos_start_date = Dates.DateTime("01-01-2005", "dd-mm-yyyy");
+oos_start_date = Dates.Date("01-01-2005", "dd-mm-yyyy");
 
 # Real-time out-of-sample options
-start_sample = Dates.DateTime("01-01-1985", "dd-mm-yyyy");
-end_sample = Dates.DateTime("30-06-2020", "dd-mm-yyyy");
+start_sample = Dates.Date("01-01-1985", "dd-mm-yyyy");
+end_sample = Dates.Date("30-06-2020", "dd-mm-yyyy");
 
 #=
 Data order is:
