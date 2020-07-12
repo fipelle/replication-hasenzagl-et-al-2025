@@ -4,13 +4,21 @@ Description: Execution manager
 Author: Filippo Pellegrino, f.pellegrino1@lse.ac.uk
 =#
 
-# Load data
-data, date, nM, nQ, MNEMONIC = read_data(data_path);
-
-# Dimensions
-m, n           = size(data);
+# Post burn-in size
 n_distribution = nDraws-burnin;
 
+# Load data
+if run_type != 3
+    data, date, nM, nQ, MNEMONIC = read_data(data_path);
+
+    # Dimensions
+    m, n = size(data);
+
+# Load data for real-time out-of-sample
+else
+    MNEMONIC, nM, nQ, transf, transf_annex = read_data_info(data_info_path);
+    df_fred_vintages = get_fred_vintages(fred_data_path, start_sample, end_sample, oos_start_date);
+end
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Execution: run_type == 1

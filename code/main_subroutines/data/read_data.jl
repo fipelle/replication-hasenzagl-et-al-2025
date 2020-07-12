@@ -1,6 +1,5 @@
 include("./monthly2quarterly.jl");
 
-
 function read_data(data_path)
 
      date_monthly   = [];
@@ -66,4 +65,25 @@ function read_data(data_path)
      end
 
      return data, date, nM, nQ, MNEMONIC;
+end
+
+function read_data_info(data_path)
+
+    # Load Excel file
+    f_info = DataFrame(XLSX.readtable(data_path, "info")...);
+
+    # Mnemonic
+    MNEMONIC = f_info[!,:MNEMONIC] |> Array{String,1};
+
+    # nM and nQ
+    frequency = f_info[!,:FREQ] |> Array{String,1};
+    nM = sum(frequency .== "m");
+    nQ = sum(frequency .== "q");
+
+    # transf and transf_annex
+    transf = f_info[!,:TRANSF] |> Array{Int64,1};
+    transf_annex = f_info[!,:TRANSF_ANNEX] |> Array{Union{Missing, String},1};
+
+    # Return output
+    return MNEMONIC, nM, nQ, transf, transf_annex;
 end
