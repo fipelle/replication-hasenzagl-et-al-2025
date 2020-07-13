@@ -14,6 +14,7 @@ function get_fred_vintages(fred_data_path::String, start_sample::Date, end_sampl
     # Load from Excel data
     excel_input = DataFrame(XLSX.readtable(fred_data_path, "alfred")...);
     tickers = excel_input[!,:fred_tickers] |> Array{String,1};
+    MNEMONIC = excel_input[!,:MNEMONIC] |> Array{String,1};
     frequency = excel_input[!,:frequency] |> Array{String,1};
     unit = excel_input[!,:unit] |> Array{String,1};
     aggregation = excel_input[!,:aggregation] |> Array{String,1};
@@ -42,7 +43,7 @@ function get_fred_vintages(fred_data_path::String, start_sample::Date, end_sampl
         ith_data[isnan.(ith_data[!,:value]),:value] .= missing;
 
         # Rename value to tickers[i]
-        rename!(ith_data, (:value => Symbol(tickers[i])));
+        rename!(ith_data, (:value => Symbol(MNEMONIC[i])));
         rename!(ith_data, (:realtime_start => :vintage_id));
 
         #=

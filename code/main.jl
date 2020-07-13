@@ -28,8 +28,62 @@ else
     # Merge vintages
     df_vintages = outerjoin(df_fred_vintages, df_local_vintages, on=[:date, :vintage_id]);
 
-    # TBA: transformations
-    # TBA: convert to dataflow (below)
+    # Re-order the data so that the quarterly series follow the monthly ones
+    df_vintages = df_vintages[!, vcat([:vintage_id, :date], Symbol.(MNEMONIC))];
+    sort!(df_vintages, [:vintage_id]);
+
+    # Convert to dataflow
+    unique_releases = unique(df_vintages[!,:vintage_id]);
+    unique_reference = sort(unique(df_vintages[!,:date]));
+    data_vintages = Array{Array{Union{Missing,Float64},2}}(undef,length(unique_releases),1);
+
+    # Loop over the releases
+    for i=1:length(unique_releases)
+
+        # Positional index
+        ith_position = findall(df_vintages[!,:vintage_id] .== unique_releases[i]);
+
+        # Current vintage (raw version)
+        current_vintage_raw = df_vintages[ith_position, 2:end];
+        sort!(current_vintage_raw, [:date]);
+
+        # Update vintage
+        if i > 1
+
+            # Latest vintage
+            latest_vintage = DataFrame(data_vintages[i-1])
+            latest_vintage = hcat(DataFrame(:date => unique_reference[1:size(data_vintages[i-1], 1)]), latest_vintage);
+            rename!(latest_vintage, vcat(:date, Symbol.(MNEMONIC)));
+
+            # Potential revisions and new releases for already observed reference months
+            revisions = semijoin(current_vintage_raw, latest_vintage, on=:date);
+
+            # `revisions` correspondence in `latest_vintage`
+            revisions_correspondence = semijoin(latest_vintage, current_vintage_raw, on=:date);
+
+            # Merge the latest two datasets
+            for j=2:size(revisions, 2)
+                jth_ind_missings = ismissing.(revisions[:,j]);
+                revisions[jth_ind_missings, j] .= revisions_correspondence[jth_ind_missings, j];
+            end
+
+            # Non-revised data
+            non_revised = antijoin(latest_vintage, current_vintage_raw, on=:date);
+
+            # New reference months
+            new_entries = antijoin(current_vintage_raw, latest_vintage, on=:date);
+
+            # Define current_vintage
+            current_vintage = vcat(non_revised, revisions, new_entries);
+            sort!(current_vintage, [:date]);
+
+            # Store current_vintage
+            data_vintages[i] = current_vintage[:, 2:end];
+
+        else
+            data_vintages[i] = current_vintage_raw[:, 2:end];
+        end
+    end
 end
 
 # ----------------------------------------------------------------------------------------------------------------------
