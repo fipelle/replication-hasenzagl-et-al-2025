@@ -146,11 +146,74 @@ function get_local_vintages(local_data_path::String, oos_start_date::Date)
 end
 
 """
-    get_vintages(df_vintages::DataFrame, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{String,1}, h::Int64)
+    transform_vintage(vintage::DataFrame, start_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64)
+
+Transform individual data vintage.
+"""
+function transform_vintage(vintage::DataFrame, start_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64)
+
+    # Loop over the columns to transform
+    for i=findall(transf .!= 0)
+
+        ith_symbol = Symbol(MNEMONIC[i]);
+
+        # YoY % transformation
+        if transf[i] == 1
+            vintage[13:end, ith_symbol] .= 100*(vintage[13:end, ith_symbol] ./ vintage[1:end-12, ith_symbol] .- 1);
+            vintage[1:12, ith_symbol] .= missing;
+
+        # Rebase and de-annualise
+        elseif transf[i] == 2
+
+            # Conversion factor
+            ith_conversion = transf_annex[i] / vintage[vintage[!,:date].==lastdayofquarter(start_sample), ith_symbol][1]
+
+            # Rabase and de-annualise
+            vintage[:, ith_symbol] .*= ith_conversion/4;
+
+        # Compute SPF expectation in levels, starting from the growth rates (wrt the variable specified in TRANSF_ANNEX)
+        elseif transf[i] == 3
+            if i <= nM
+                error("Transformation not supported for monthly data yet. The transform_vintage function must be updated to enable this feature.")
+            else
+                # Identify first quarter
+                ith_q1 = findall(.~ismissing.(vintage[:, ith_symbol]))[1];
+
+                # Apply transformation
+                vintage[ith_q1:end, ith_symbol] .*= vintage[ith_q1-3:end-3, Symbol(transf_annex[i])];
+                vintage[1:ith_q1-1, ith_symbol] .= missing;
+            end
+
+        # Cycle transformation (2 + compute cycle subtracting trend from variable specified in TRANSF_ANNEX)
+        elseif transf[i] == 4
+            vintage[:, ith_symbol] .-= vintage[:, Symbol(transf_annex[i])];
+            vintage[:, ith_symbol] .*= -1;
+        end
+
+        if transf[i] == 3 || transf[i] == 4
+            if findall(MNEMONIC .== transf_annex[i])[1] > i && transf[findall(MNEMONIC .== transf_annex[i])[1]] == 2
+                error("The $i-th variable must be positioned after $(transf_annex[i]). \\ If $i-th is monthly the transform_vintage function must be updated, or the transformation type changed.")
+            end
+        end
+    end
+
+    # If at least one variable is transformed in YoY% increase the sample of one year skip the first 12 observations
+    if sum(transf .== 1) > 0
+        vintage = vintage[13:end, :];
+    elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
+        vintage = vintage[4:end, :];
+    end
+
+    # Return output
+    return vintage;
+end
+
+"""
+    get_vintages(df_vintages::DataFrame, start_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64, h::Int64)
 
 Construct vintages in Array format and transform the data.
 """
-function get_vintages(df_vintages::DataFrame, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{String,1}, h::Int64);
+function get_vintages(df_vintages::DataFrame, start_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64, h::Int64)
 
     # Re-order the data so that the quarterly series follow the monthly ones
     df_vintages = df_vintages[!, vcat([:vintage_id, :date], Symbol.(MNEMONIC))];
@@ -160,9 +223,11 @@ function get_vintages(df_vintages::DataFrame, MNEMONIC::Array{String,1}, transf:
     unique_releases = unique(df_vintages[!,:vintage_id]);
     unique_reference = sort(unique(df_vintages[!,:date]));
     data_vintages = Array{Array{Union{Missing,Float64},2}}(undef,length(unique_releases),1);
+    data_vintages_untransformed = Array{Array{Union{Missing,Float64},2}}(undef,length(unique_releases),1);
 
     # Loop over the releases
     for i=1:length(unique_releases)
+        println("Build vintage $i (out of $(length(unique_releases)))")
 
         # Positional index
         ith_position = findall(df_vintages[!,:vintage_id] .== unique_releases[i]);
@@ -175,8 +240,9 @@ function get_vintages(df_vintages::DataFrame, MNEMONIC::Array{String,1}, transf:
         if i > 1
 
             # Latest vintage
-            latest_vintage = DataFrame(data_vintages[i-1])
-            latest_vintage = hcat(DataFrame(:date => unique_reference[1:size(data_vintages[i-1], 1)]), latest_vintage);
+            latest_vintage = DataFrame(data_vintages_untransformed[i-1]);
+            latest_vintage_obs = size(latest_vintage, 1);
+            latest_vintage = hcat(DataFrame(:date => unique_reference[1:latest_vintage_obs]), latest_vintage);
             rename!(latest_vintage, vcat(:date, Symbol.(MNEMONIC)));
 
             # Potential revisions and new releases for already observed reference months
@@ -201,12 +267,29 @@ function get_vintages(df_vintages::DataFrame, MNEMONIC::Array{String,1}, transf:
             current_vintage = vcat(non_revised, revisions, new_entries);
             sort!(current_vintage, [:date]);
 
-            # Store current_vintage
-            data_vintages[i] = [current_vintage[:, 2:end]; missing.*ones(h, length(MNEMONIC))];
+            # Store untransformed vintage
+            data_vintages_untransformed[i] = current_vintage[:, 2:end];
+
+            # Transform vintage
+            current_vintage = transform_vintage(current_vintage, start_sample, MNEMONIC, transf, transf_annex, nM);
+
+            # Store current vintage
+            data_vintages[i] = current_vintage[:, 2:end];
 
         else
-            data_vintages[i] = [current_vintage_raw[:, 2:end]; ; missing.*ones(h, length(MNEMONIC))];
+
+            # Store untransformed vintage
+            data_vintages_untransformed[i] = current_vintage_raw[:, 2:end];
+
+            # Transform vintage
+            current_vintage_raw = transform_vintage(current_vintage_raw, start_sample, MNEMONIC, transf, transf_annex, nM);
+
+            # Store transformed vintage
+            data_vintages[i] = current_vintage_raw[:, 2:end];
         end
+
+        # Add missings
+        data_vintages[i] = vcat(data_vintages[i], missing.*ones(h, length(MNEMONIC)));
     end
 
     # Return output

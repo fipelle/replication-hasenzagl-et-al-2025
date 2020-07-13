@@ -19,12 +19,16 @@ else
     # Load general info
     MNEMONIC, nM, nQ, transf, transf_annex = read_data_info(data_info_path);
 
-    #=
-    Load Fred data
-    Note: If at least one variable must be transformed in YoY% increase the sample of one year
-    =#
+    # Load Fred data
+
+    # - For the YoY% transformation
     if sum(transf .== 1) > 0
         df_fred_vintages = get_fred_vintages(fred_data_path, start_sample-Year(1), end_sample, oos_start_date);
+
+    # - For the SPF transformation
+    elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
+        df_fred_vintages = get_fred_vintages(fred_data_path, start_sample-Month(3), end_sample, oos_start_date);
+
     else
         df_fred_vintages = get_fred_vintages(fred_data_path, start_sample, end_sample, oos_start_date);
     end
@@ -36,7 +40,7 @@ else
     df_vintages = outerjoin(df_fred_vintages, df_local_vintages, on=[:date, :vintage_id]);
 
     # Array of vintages
-    data_vintages = get_vintages(df_vintages, MNEMONIC, transf, transf_annex, h);
+    data_vintages = get_vintages(df_vintages, start_sample, MNEMONIC, transf, transf_annex, nM, h);
 end
 
 # ----------------------------------------------------------------------------------------------------------------------

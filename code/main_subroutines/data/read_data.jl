@@ -88,7 +88,7 @@ function read_data_info(data_path)
 
     # transf and transf_annex
     transf = f_info[!,:TRANSF] |> Array{Int64,1};
-    transf_annex = f_info[!,:TRANSF_ANNEX] |> Array{Union{Missing, String},1};
+    transf_annex = f_info[!,:TRANSF_ANNEX] |> Array{Any,1};
 
     # Return output
     return MNEMONIC, nM, nQ, transf, transf_annex;
