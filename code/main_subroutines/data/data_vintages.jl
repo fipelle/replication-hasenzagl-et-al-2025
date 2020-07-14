@@ -227,7 +227,9 @@ function get_vintages(df_vintages::DataFrame, start_sample::Date, MNEMONIC::Arra
 
     # Loop over the releases
     for i=1:length(unique_releases)
-        println("Build vintage $i (out of $(length(unique_releases)))")
+        if i == 1 || mod(i, 100) == 0
+            println("Build vintage $i (out of $(length(unique_releases)))")
+        end
 
         # Positional index
         ith_position = findall(df_vintages[!,:vintage_id] .== unique_releases[i]);
@@ -292,6 +294,25 @@ function get_vintages(df_vintages::DataFrame, start_sample::Date, MNEMONIC::Arra
         data_vintages[i] = vcat(data_vintages[i], missing.*ones(h, length(MNEMONIC)));
     end
 
+    # Build unique_years and data_vintages_year
+    vintage_years = [Year(unique_releases[i]).value for i=1:size(unique_releases,1)];
+    unique_years = unique(vintage_years);
+    releases_per_year = vcat([sum(vintage_years .== unique_years[i]) for i=1:length(unique_years)]...);
+
+    data_vintages_year = Array{Array{Array{Union{Missing,Float64},2}, 1}}(undef, length(unique_years));
+    for i=1:length(unique_years)
+        data_vintages_year[i] = Array{Array{Union{Missing,Float64},2},1}(undef, releases_per_year[i]);
+    end
+
+    ind_year = findall([1; diff(vintage_years)] .== 1);
+    ind_year = [ind_year [ind_year[2:end] .- 1; length(vintage_years)]];
+
+    for i=1:size(ind_year, 1)
+        for j=ind_year[i,1]:ind_year[i,2]
+            data_vintages_year[i][j-ind_year[i,1]+1] = data_vintages[j];
+        end
+    end
+
     # Return output
-    return data_vintages;
+    return data_vintages, data_vintages_year, unique_years, releases_per_year;
 end

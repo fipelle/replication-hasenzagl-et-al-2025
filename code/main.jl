@@ -8,11 +8,8 @@ Author: Filippo Pellegrino, f.pellegrino1@lse.ac.uk
 n_distribution = nDraws-burnin;
 
 # Load data
-if run_type != 3
+if run_type == 1
     data, date, nM, nQ, MNEMONIC = read_data(data_path);
-
-    # Dimensions
-    m, n = size(data);
 
 # Load data for real-time out-of-sample
 else
@@ -40,8 +37,15 @@ else
     df_vintages = outerjoin(df_fred_vintages, df_local_vintages, on=[:date, :vintage_id]);
 
     # Array of vintages
-    data_vintages = get_vintages(df_vintages, start_sample, MNEMONIC, transf, transf_annex, nM, h);
+    data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, MNEMONIC, transf, transf_annex, nM, h);
+
+    # Last vintage
+    data = data_vintages[end];
 end
+
+# Dimensions
+m, n = size(data);
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Execution: run_type == 1
@@ -75,7 +79,7 @@ if run_type == 1
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Execution: run_type == 2
-# -  Out-of-sample: out-of-sample exercise
+# -  Out-of-sample
 # ----------------------------------------------------------------------------------------------------------------------
 
 elseif run_type == 2
@@ -91,10 +95,6 @@ elseif run_type == 2
         quarterly_position = quarterly_position[data_order];
         MNEMONIC = MNEMONIC[data_order];
     end
-
-    # Vintages per year
-    data_vintages, data_vintages_year, unique_years, releases_per_year = get_dataflow(data, date, data_path, h, oos_start_date);
-    data = [data; missing .* ones(h, nM+nQ)];
 
     # SPF is unrestricted
     quarterly_position[MNEMONIC.=="GDP SPF"] .= 0.0;

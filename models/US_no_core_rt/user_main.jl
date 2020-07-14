@@ -18,13 +18,10 @@ using Distributed;
 
 # General dependencies
 @everywhere include("../../code/main_subroutines/data/read_data.jl");
-@everywhere include("../../code/main_subroutines/data/get_dataflow.jl");
+@everywhere include("../../code/main_subroutines/data/data_vintages.jl");
 @everywhere include("../../code/main_subroutines/data/standardize_data.jl");
 @everywhere include("../../code/main_subroutines/oos/rw_benchmark.jl");
 @everywhere include("../../code/main_subroutines/oos/parallel_oos!.jl");
-
-# Real-time dependencies
-@everywhere include("../../code/main_subroutines/data/fred_dependencies.jl");
 
 # Model-specific dependencies
 @everywhere include("../../code/ssm_settings_no_core.jl");
@@ -53,18 +50,15 @@ burnin = 5000;
 Run type
 ------------------------------------------------------------------------------------------------------------------------
 1. Single iteration: it executes the code using the most updated datapoints
-2. Pseudo out-of-sample
-3. Real-time out-of-sample
+2. Out-of-sample (real-time or pseudo, dependings on the settings in the Excel input)
 ------------------------------------------------------------------------------------------------------------------------
 =#
 
-run_type = 3;
+run_type = 2;
 res_name = "";
 
-# when run_type is equal to 2 or 3 this is the start date for the OOS
+# Out-of-sample options
 oos_start_date = Dates.Date("01-01-2005", "dd-mm-yyyy");
-
-# Real-time out-of-sample options
 start_sample = Dates.Date("01-01-1985", "dd-mm-yyyy");
 end_sample = Dates.Date("30-06-2020", "dd-mm-yyyy");
 
