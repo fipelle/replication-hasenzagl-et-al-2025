@@ -11,7 +11,7 @@ n_distribution = nDraws-burnin;
 if run_type == 1
     data, date, nM, nQ, MNEMONIC = read_data(data_path);
 
-# Load data for real-time out-of-sample
+# Load data for out-of-sample
 else
     # Load general info
     MNEMONIC, nM, nQ, transf, transf_annex = read_data_info(data_info_path);
@@ -34,7 +34,17 @@ else
     df_local_vintages = get_local_vintages(local_data_path, oos_start_date);
 
     # Merge vintages
-    df_vintages = outerjoin(df_fred_vintages, df_local_vintages, on=[:date, :vintage_id]);
+    if size(df_fred_vintages,1) > 0 && size(df_local_vintages,1) > 0
+        df_vintages = outerjoin(df_fred_vintages, df_local_vintages, on=[:date, :vintage_id]);
+
+    # Use `df_fred_vintages` only
+    elseif size(df_fred_vintages,1) > 0 && size(df_local_vintages,1) == 0
+        df_vintages = copy(df_fred_vintages);
+
+    # Use `df_local_vintages` only
+    else
+        df_vintages = copy(df_local_vintages);
+    end
 
     # Array of vintages
     data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, MNEMONIC, transf, transf_annex, nM, h);
