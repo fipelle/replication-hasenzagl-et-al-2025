@@ -77,11 +77,11 @@ function get_fred_vintages(fred_data_path::String, start_sample::Date, end_sampl
 end
 
 """
-    get_local_vintages(local_data_path::String, oos_start_date::Date)
+    get_local_vintages(local_data_path::String, end_sample::Date, oos_start_date::Date)
 
 Build data vintages from local data.
 """
-function get_local_vintages(local_data_path::String, oos_start_date::Date)
+function get_local_vintages(local_data_path::String, end_sample::Date, oos_start_date::Date)
 
     # Initialise final output
     local_vintages = DataFrame();
@@ -96,7 +96,11 @@ function get_local_vintages(local_data_path::String, oos_start_date::Date)
         reference    = vcat([Dates.Date(names(raw_calendar)[1+i]) for i=1:size(raw_calendar,2)-1]...);
         releases     = raw_calendar[:, 2:end] |> Array{Union{Missing,Date},2};
 
-        # Match reference with date
+        # Resize calendar wrt end_sample
+        reference = reference[reference .<= end_sample];
+        releases = releases[:, reference .<= end_sample];
+
+        # This block removes the calendar entries that do not match any date in `date`
         ind_dates = [];
         ind_dataset = [];
         for i=1:length(reference)
@@ -110,12 +114,8 @@ function get_local_vintages(local_data_path::String, oos_start_date::Date)
         min_ind_dates = minimum(ind_dates);
         min_ind_dataset = minimum(ind_dataset);
 
-        # Cut reference and releases
         reference = reference[ind_dates];
         releases = releases[:, ind_dates];
-
-        # Initialise final output
-        local_vintages = DataFrame();
 
         # Loop over local series
         for i=1:nM_local+nQ_local

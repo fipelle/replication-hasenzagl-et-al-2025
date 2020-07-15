@@ -31,7 +31,7 @@ else
     end
 
     # Load local data
-    df_local_vintages = get_local_vintages(local_data_path, oos_start_date);
+    df_local_vintages = get_local_vintages(local_data_path, end_sample, oos_start_date);
 
     # Merge vintages
     if size(df_fred_vintages,1) > 0 && size(df_local_vintages,1) > 0
