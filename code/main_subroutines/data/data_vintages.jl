@@ -192,6 +192,7 @@ function transform_vintage(vintage::DataFrame, start_sample::Date, MNEMONIC::Arr
                 ith_q1 = findall(.~ismissing.(vintage[:, ith_symbol]))[1];
 
                 # Apply transformation
+                vintage[ith_q1:end, ith_symbol] .+= 1;
                 vintage[ith_q1:end, ith_symbol] .*= vintage[ith_q1-3:end-3, Symbol(transf_annex[i])];
                 vintage[1:ith_q1-1, ith_symbol] .= missing;
             end
