@@ -46,8 +46,11 @@ else
         df_vintages = copy(df_local_vintages);
     end
 
+    # Chronological order
+    sort!(df_vintages, :vintage_id);
+
     # Array of vintages
-    data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, MNEMONIC, transf, transf_annex, nM, h);
+    data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, end_sample, MNEMONIC, transf, transf_annex, nM, h);
 
     # Last vintage
     data = data_vintages[end];

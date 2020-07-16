@@ -72,6 +72,9 @@ function get_fred_vintages(fred_data_path::String, start_sample::Date, end_sampl
         @warn("get_fred_vintages crashed. \\ Is $fred_data_path empty? If not, double check the input file.\\ df_fred_vintages is defined as an empty DataFrame");
     end
 
+    # Chronological order
+    sort!(fred_vintages, :vintage_id);
+
     # Return output
     return fred_vintages;
 end
@@ -153,6 +156,9 @@ function get_local_vintages(local_data_path::String, end_sample::Date, oos_start
         @warn("get_local_vintages crashed. \\ Is $local_data_path empty? If not, double check the input file.\\ df_local_vintages is defined as an empty DataFrame");
     end
 
+    # Chronological order
+    sort!(local_vintages, :vintage_id);
+
     # Return output
     return local_vintages;
 end
@@ -188,13 +194,15 @@ function transform_vintage(vintage::DataFrame, start_sample::Date, MNEMONIC::Arr
             if i <= nM
                 error("Transformation not supported for monthly data yet. The transform_vintage function must be updated to enable this feature.")
             else
-                # Identify first quarter
-                ith_q1 = findall(.~ismissing.(vintage[:, ith_symbol]))[1];
 
-                # Apply transformation
-                vintage[ith_q1:end, ith_symbol] .+= 1;
-                vintage[ith_q1:end, ith_symbol] .*= vintage[ith_q1-3:end-3, Symbol(transf_annex[i])];
-                vintage[1:ith_q1-1, ith_symbol] .= missing;
+                # Identify first quarter
+                first_not_missing_spf = findall(.~ismissing.(vintage[:, ith_symbol]))[1];
+
+                # Compute growth factor (i.e., 1+growth rate)
+                vintage[:, ith_symbol] .+= 1;
+
+                # Compute SPF in levels
+                vintage[first_not_missing_spf:end, ith_symbol] .*= vintage[first_not_missing_spf-3:end-3, Symbol(transf_annex[i])];
             end
 
         # Cycle transformation (2 + compute cycle subtracting trend from variable specified in TRANSF_ANNEX)
@@ -222,21 +230,24 @@ function transform_vintage(vintage::DataFrame, start_sample::Date, MNEMONIC::Arr
 end
 
 """
-    get_vintages(df_vintages::DataFrame, start_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64, h::Int64)
+    get_vintages(df_vintages::DataFrame, start_sample::Date, end_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64, h::Int64)
 
 Construct vintages in Array format and transform the data.
 """
-function get_vintages(df_vintages::DataFrame, start_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64, h::Int64)
+function get_vintages(df_vintages::DataFrame, start_sample::Date, end_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64, h::Int64)
 
     # Re-order the data so that the quarterly series follow the monthly ones
     df_vintages = df_vintages[!, vcat([:vintage_id, :date], Symbol.(MNEMONIC))];
-    sort!(df_vintages, [:vintage_id]);
+    sort!(df_vintages, :vintage_id);
 
     # Convert to dataflow
     unique_releases = unique(df_vintages[!,:vintage_id]);
     unique_reference = sort(unique(df_vintages[!,:date]));
     data_vintages = Array{Array{Union{Missing,Float64},2}}(undef,length(unique_releases),1);
     data_vintages_untransformed = Array{Array{Union{Missing,Float64},2}}(undef,length(unique_releases),1);
+
+    # Date sample range
+    date_sample_range = Dates.lastdayofmonth.(collect(start_sample:Dates.Month(1):end_sample));
 
     # Loop over the releases
     for i=1:length(unique_releases)
@@ -249,11 +260,12 @@ function get_vintages(df_vintages::DataFrame, start_sample::Date, MNEMONIC::Arra
 
         # Current vintage (raw version)
         current_vintage_raw = df_vintages[ith_position, 2:end];
-        sort!(current_vintage_raw, [:date]);
+        sort!(current_vintage_raw, :date);
 
         # Update vintage
-        if i > 1
-
+        if i == 1
+            current_vintage = copy(current_vintage_raw);
+        else
             # Latest vintage
             latest_vintage = DataFrame(data_vintages_untransformed[i-1]);
             latest_vintage_obs = size(latest_vintage, 1);
@@ -280,30 +292,24 @@ function get_vintages(df_vintages::DataFrame, start_sample::Date, MNEMONIC::Arra
 
             # Define current_vintage
             current_vintage = vcat(non_revised, revisions, new_entries);
-            sort!(current_vintage, [:date]);
-
-            # Store untransformed vintage
-            data_vintages_untransformed[i] = current_vintage[:, 2:end];
-
-            # Transform vintage
-            current_vintage = transform_vintage(current_vintage, start_sample, MNEMONIC, transf, transf_annex, nM);
-
-            # Store current vintage
-            data_vintages[i] = current_vintage[:, 2:end];
-
-        else
-
-            # Store untransformed vintage
-            data_vintages_untransformed[i] = current_vintage_raw[:, 2:end];
-
-            # Transform vintage
-            current_vintage_raw = transform_vintage(current_vintage_raw, start_sample, MNEMONIC, transf, transf_annex, nM);
-
-            # Store transformed vintage
-            data_vintages[i] = current_vintage_raw[:, 2:end];
+            sort!(current_vintage, :date);
         end
 
-        # Add missings
+        # Store untransformed vintage
+        data_vintages_untransformed[i] = current_vintage[:, 2:end];
+
+        # Add missing rows (if necessary)
+        ith_date_sample_range = date_sample_range[date_sample_range .<= maximum(current_vintage[!,:date])];
+        current_vintage = outerjoin(DataFrame(:date=>ith_date_sample_range), current_vintage, on=:date);
+        sort!(current_vintage, :date);
+
+        # Transform vintage
+        current_vintage = transform_vintage(current_vintage, start_sample, MNEMONIC, transf, transf_annex, nM);
+
+        # Store current vintage
+        data_vintages[i] = current_vintage[:, 2:end];
+
+        # Add missings to account for the forecast horizon
         data_vintages[i] = vcat(data_vintages[i], missing.*ones(h, length(MNEMONIC)));
     end
 
