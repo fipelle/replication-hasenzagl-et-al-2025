@@ -245,6 +245,7 @@ function get_vintages(df_vintages::DataFrame, start_sample::Date, end_sample::Da
     unique_reference = sort(unique(df_vintages[!,:date]));
     data_vintages = Array{Array{Union{Missing,Float64},2}}(undef,length(unique_releases),1);
     data_vintages_untransformed = Array{Array{Union{Missing,Float64},2}}(undef,length(unique_releases),1);
+    data_vintages_untransformed_dates = Array{Array{Date,1}}(undef,length(unique_releases),1);
 
     # Date sample range
     date_sample_range = Dates.lastdayofmonth.(collect(start_sample:Dates.Month(1):end_sample));
@@ -266,10 +267,9 @@ function get_vintages(df_vintages::DataFrame, start_sample::Date, end_sample::Da
         if i == 1
             current_vintage = copy(current_vintage_raw);
         else
+
             # Latest vintage
-            latest_vintage = DataFrame(data_vintages_untransformed[i-1]);
-            latest_vintage_obs = size(latest_vintage, 1);
-            latest_vintage = hcat(DataFrame(:date => unique_reference[1:latest_vintage_obs]), latest_vintage);
+            latest_vintage = DataFrame(hcat(data_vintages_untransformed_dates[i-1], data_vintages_untransformed[i-1]));
             rename!(latest_vintage, vcat(:date, Symbol.(MNEMONIC)));
 
             # Potential revisions and new releases for already observed reference months
@@ -297,6 +297,9 @@ function get_vintages(df_vintages::DataFrame, start_sample::Date, end_sample::Da
 
         # Store untransformed vintage
         data_vintages_untransformed[i] = current_vintage[:, 2:end];
+
+        # Store reference dates
+        data_vintages_untransformed_dates[i] = current_vintage[:,1];
 
         # Add missing rows (if necessary)
         ith_date_sample_range = date_sample_range[date_sample_range .<= maximum(current_vintage[!,:date])];

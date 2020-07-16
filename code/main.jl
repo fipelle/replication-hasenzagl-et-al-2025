@@ -50,7 +50,18 @@ else
     sort!(df_vintages, :vintage_id);
 
     # Array of vintages
-    data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, end_sample, MNEMONIC, transf, transf_annex, nM, h);
+
+    # - For the YoY% transformation
+    if sum(transf .== 1) > 0
+        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Year(1), end_sample, MNEMONIC, transf, transf_annex, nM, h);
+
+    # - For the SPF transformation
+    elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
+        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Month(3), end_sample, MNEMONIC, transf, transf_annex, nM, h);
+
+    else
+        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, end_sample, MNEMONIC, transf, transf_annex, nM, h);
+    end
 
     # Last vintage
     data = data_vintages[end];
