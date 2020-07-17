@@ -70,7 +70,7 @@ Data order is:
 - INFL SPF
 - EXP INFL
 =#
-data_order = [6; 7; 8; collect(1:4); 9; 5];
+data_order = [7; 6; 8; collect(1:4); 9; 5];
 
 # Estimate loading for the common trend (associated to EXP INFL)
 estim = false;
