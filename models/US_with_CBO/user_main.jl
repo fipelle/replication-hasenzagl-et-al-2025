@@ -2,27 +2,31 @@
 # Initial settings
 # ----------------------------------------------------------------------------------------------------------------------
 
+# Load packages
 using Distributed;
-
 @everywhere using Dates;
 @everywhere using FileIO;
 @everywhere using LinearAlgebra;
 @everywhere using Random;
 @everywhere using Statistics;
-@everywhere using FileIO, XLSX;
+@everywhere using FileIO, CSV, XLSX;
 @everywhere using DataFrames;
 @everywhere using Logging;
-
-@everywhere include("../../code/main_subroutines/data/read_data.jl");
-@everywhere include("../../code/main_subroutines/data/get_dataflow.jl");
-@everywhere include("../../code/main_subroutines/data/standardize_data.jl");
-@everywhere include("../../code/main_subroutines/oos/rw_benchmark.jl");
-@everywhere include("../../code/main_subroutines/oos/parallel_oos!.jl");
-@everywhere include("../../code/ssm_settings_no_core_CBO.jl");
-
+@everywhere using FredData;
 @everywhere include("../../code/JuSSM/JuSSM.jl")
 @everywhere using Main.JuSSM;
 
+# General dependencies
+@everywhere include("../../code/main_subroutines/data/read_data.jl");
+@everywhere include("../../code/main_subroutines/data/data_vintages.jl");
+@everywhere include("../../code/main_subroutines/data/standardize_data.jl");
+@everywhere include("../../code/main_subroutines/oos/rw_benchmark.jl");
+@everywhere include("../../code/main_subroutines/oos/parallel_oos!.jl");
+
+# Model-specific dependencies
+@everywhere include("../../code/ssm_settings_with_CBO.jl");
+
+# Data paths
 data_path = "./data/US.xlsx"; # Data file
 h = 36; # forecast horizon [it is used when run_type is 1 or 3]
 
@@ -47,15 +51,12 @@ Run type
 =#
 
 run_type = 1;
-
-# when run_type = 2 this is the start date for the OOS
-oos_start_date = Dates.DateTime("01-01-2005", "mm-dd-yyyy");
-
-# when run_type == 2 it is an array of strings
 res_name = "";
 
-# used only when run_type == 2
-cond = [];
+# Out-of-sample options
+oos_start_date = "";
+start_sample = "";
+end_sample = "";
 
 #=
 Data order is:

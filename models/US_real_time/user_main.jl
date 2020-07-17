@@ -24,7 +24,7 @@ using Distributed;
 @everywhere include("../../code/main_subroutines/oos/parallel_oos!.jl");
 
 # Model-specific dependencies
-@everywhere include("../../code/ssm_settings_no_core.jl");
+@everywhere include("../../code/ssm_settings.jl");
 
 # Data paths
 data_info_path = "./data/US_info.xlsx";
@@ -32,7 +32,7 @@ local_data_path = "./data/US_local.xlsx";
 fred_data_path = "./data/US_fred.xlsx";
 
 # Forecast horizon
-h = 36; # forecast horizon [it is used when run_type is 1 or 3]
+h = 36; # forecast horizon [it is used when run_type is 1 or 2]
 
 
 # ----------------------------------------------------------------------------------------------------------------------
