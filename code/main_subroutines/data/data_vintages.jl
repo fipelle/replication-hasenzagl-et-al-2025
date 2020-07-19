@@ -164,11 +164,15 @@ function get_local_vintages(local_data_path::String, end_sample::Date, oos_start
 end
 
 """
-    transform_vintage(vintage::DataFrame, start_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64)
+    transform_vintage(vintage_untransformed::DataFrame, start_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_arg1::Array{Any,1}, transf_arg2::Array{Any,1}, nM::Int64)
 
 Transform individual data vintage.
 """
-function transform_vintage(vintage::DataFrame, start_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64)
+function transform_vintage(vintage_untransformed::DataFrame, start_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_arg1::Array{Any,1}, transf_arg2::Array{Any,1}, nM::Int64)
+
+    # Initialise
+    vintage = copy(vintage_untransformed);
+    conversion_factors = ones(length(MNEMONIC));
 
     # Loop over the columns to transform
     for i=findall(transf .!= 0)
@@ -184,12 +188,23 @@ function transform_vintage(vintage::DataFrame, start_sample::Date, MNEMONIC::Arr
         elseif transf[i] == 2
 
             # Conversion factor
-            ith_conversion = transf_annex[i] / vintage[vintage[!,:date].==lastdayofquarter(start_sample), ith_symbol][1]
+
+            # - For the YoY% transformation
+            if sum(transf .== 1) > 0
+                conversion_factors[i] = transf_arg1[i] / (4*vintage[vintage[!,:date].==lastdayofquarter(start_sample+Year(1)), ith_symbol][1]);
+
+            # - For the SPF transformation
+            elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
+                conversion_factors[i] = transf_arg1[i] / (4*vintage[vintage[!,:date].==lastdayofquarter(start_sample+Month(3)), ith_symbol][1]);
+
+            else
+                conversion_factors[i] = transf_arg1[i] / (4*vintage[vintage[!,:date].==lastdayofquarter(start_sample), ith_symbol][1]);
+            end
 
             # Rabase and de-annualise
-            vintage[:, ith_symbol] .*= ith_conversion/4;
+            vintage[:, ith_symbol] .*= conversion_factors[i];
 
-        # Compute SPF expectation in levels, starting from the growth rates (wrt the variable specified in TRANSF_ANNEX)
+        # Compute SPF expectation in levels, starting from the growth rates (wrt the variable specified in transf_arg2)
         elseif transf[i] == 3
             if i <= nM
                 error("Transformation not supported for monthly data yet. The transform_vintage function must be updated to enable this feature.")
@@ -202,18 +217,35 @@ function transform_vintage(vintage::DataFrame, start_sample::Date, MNEMONIC::Arr
                 vintage[:, ith_symbol] .+= 1;
 
                 # Compute SPF in levels
-                vintage[first_not_missing_spf:end, ith_symbol] .*= vintage[first_not_missing_spf-3:end-3, Symbol(transf_annex[i])];
+                vintage[first_not_missing_spf:end, ith_symbol] .*= vintage[first_not_missing_spf-3:end-3, Symbol(transf_arg2[i])];
             end
 
-        # Cycle transformation (2 + compute cycle subtracting trend from variable specified in TRANSF_ANNEX)
+        # Cycle transformation (2 + compute cycle subtracting trend from variable specified in transf_arg2)
         elseif transf[i] == 4
-            vintage[:, ith_symbol] .-= vintage[:, Symbol(transf_annex[i])];
+
+            # - For the YoY% transformation
+            if sum(transf .== 1) > 0
+                conversion_factors[i] = transf_arg1[i] / (4*vintage[vintage[!,:date].==lastdayofquarter(start_sample+Year(1)), ith_symbol][1]);
+
+            # - For the SPF transformation
+            elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
+                conversion_factors[i] = transf_arg1[i] / (4*vintage[vintage[!,:date].==lastdayofquarter(start_sample+Month(3)), ith_symbol][1]);
+
+            else
+                conversion_factors[i] = transf_arg1[i] / (4*vintage[vintage[!,:date].==lastdayofquarter(start_sample), ith_symbol][1]);
+            end
+
+            # Rabase and de-annualise
+            vintage[:, ith_symbol] .*= conversion_factors[i];
+
+            # Compute cycle
+            vintage[:, ith_symbol] .-= vintage[:, Symbol(transf_arg2[i])];
             vintage[:, ith_symbol] .*= -1;
         end
 
         if transf[i] == 3 || transf[i] == 4
-            if findall(MNEMONIC .== transf_annex[i])[1] > i && transf[findall(MNEMONIC .== transf_annex[i])[1]] == 2
-                error("The $i-th variable must be positioned after $(transf_annex[i]). \\ If $i-th is monthly the transform_vintage function must be updated, or the transformation type changed.")
+            if findall(MNEMONIC .== transf_arg2[i])[1] > i && transf[findall(MNEMONIC .== transf_arg2[i])[1]] == 2
+                error("The $i-th variable must be positioned after $(transf_arg2[i]). \\ If $i-th is monthly the transform_vintage function must be updated, or the transformation type changed.")
             end
         end
     end
@@ -225,20 +257,22 @@ function transform_vintage(vintage::DataFrame, start_sample::Date, MNEMONIC::Arr
         vintage = vintage[4:end, :];
     end
 
+    # Remove final missings (if any)
+    count_missings = sum(ismissing.(Array(vintage[:,2:end])), dims=2)[:];
+    if maximum(count_missings) == size(vintage,2)-1
+        vintage = vintage[1:findall(count_missings .== size(vintage,2)-1)[1]-1, :];
+    end
+
     # Return output
     return vintage;
 end
 
 """
-    get_vintages(df_vintages::DataFrame, start_sample::Date, end_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64, h::Int64)
+    get_vintages(df_vintages::DataFrame, start_sample::Date, end_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_arg1::Array{Any,1}, transf_arg2::Array{Any,1}, nM::Int64, h::Int64)
 
 Construct vintages in Array format and transform the data.
 """
-function get_vintages(df_vintages::DataFrame, start_sample::Date, end_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_annex::Array{Any,1}, nM::Int64, h::Int64)
-
-    # Re-order the data so that the quarterly series follow the monthly ones
-    df_vintages = df_vintages[!, vcat([:vintage_id, :date], Symbol.(MNEMONIC))];
-    sort!(df_vintages, :vintage_id);
+function get_vintages(df_vintages::DataFrame, start_sample::Date, end_sample::Date, MNEMONIC::Array{String,1}, transf::Array{Int64,1}, transf_arg1::Array{Any,1}, transf_arg2::Array{Any,1}, nM::Int64, h::Int64)
 
     # Convert to dataflow
     unique_releases = unique(df_vintages[!,:vintage_id]);
@@ -307,7 +341,7 @@ function get_vintages(df_vintages::DataFrame, start_sample::Date, end_sample::Da
         sort!(current_vintage, :date);
 
         # Transform vintage
-        current_vintage = transform_vintage(current_vintage, start_sample, MNEMONIC, transf, transf_annex, nM);
+        current_vintage = transform_vintage(current_vintage, start_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM);
 
         # Store current vintage
         data_vintages[i] = current_vintage[:, 2:end];

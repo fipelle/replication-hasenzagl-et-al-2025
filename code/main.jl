@@ -13,8 +13,9 @@ if run_type == 1
 
 # Load data for out-of-sample
 else
+
     # Load general info
-    MNEMONIC, nM, nQ, transf, transf_annex = read_data_info(data_info_path);
+    MNEMONIC, nM, nQ, transf, transf_arg1, transf_arg2 = read_data_info(data_info_path);
 
     # Load Fred data
 
@@ -46,26 +47,29 @@ else
         df_vintages = copy(df_local_vintages);
     end
 
-    # Chronological order
+    # Re-order the data so that the quarterly series follow the monthly ones
+    df_vintages = df_vintages[!, vcat([:vintage_id, :date], Symbol.(MNEMONIC))];
     sort!(df_vintages, :vintage_id);
 
     # Array of vintages
 
     # - For the YoY% transformation
     if sum(transf .== 1) > 0
-        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Year(1), end_sample, MNEMONIC, transf, transf_annex, nM, h);
+        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Year(1), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
 
     # - For the SPF transformation
     elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
-        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Month(3), end_sample, MNEMONIC, transf, transf_annex, nM, h);
+        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Month(3), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
 
     else
-        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, end_sample, MNEMONIC, transf, transf_annex, nM, h);
+        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
     end
 
     # Last vintage
     data = data_vintages[end];
 end
+
+error("");
 
 # Dimensions
 m, n = size(data);
