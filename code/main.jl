@@ -69,8 +69,6 @@ else
     data = data_vintages[end];
 end
 
-error("");
-
 # Dimensions
 m, n = size(data);
 
