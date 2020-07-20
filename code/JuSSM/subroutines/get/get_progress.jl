@@ -1,8 +1,6 @@
 function get_progress(chain::Array{Float64, 1}, istart::Int64, iend::Int64, print_progress=1::Int64, acc_str=""::String)
 # ----------------------------------------------------------------------------------------------------------------------
 # Get acceptance rate and print current status of the estimation (if enabled)
-#
-# Author: Filippo Pellegrino, f.pellegrino1@lse.ac.uk
 # ----------------------------------------------------------------------------------------------------------------------
 
      chain_iter = chain[istart:iend];
@@ -24,8 +22,6 @@ end
 function get_progress(chain::Array{Float64, 2}, istart::Int64, iend::Int64, print_progress=1::Int64, acc_str=""::String)
 # ----------------------------------------------------------------------------------------------------------------------
 # Get acceptance rate and print current status of the estimation (if enabled)
-#
-# Author: Filippo Pellegrino, f.pellegrino1@lse.ac.uk
 # ----------------------------------------------------------------------------------------------------------------------
 
      chain_iter = chain[:, istart:iend];

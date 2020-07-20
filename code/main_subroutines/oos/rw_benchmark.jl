@@ -2,7 +2,6 @@ function rw_benchmark(data_v, nM, nQ, data_order, last_not_na)
     #=
     Name: rw_benchmark.jl
     Description: Random walk benchmark
-    Author: Filippo Pellegrino, f.pellegrino1@lse.ac.uk
     =#
 
     # Mixed-frequency
@@ -15,8 +14,6 @@ function rw_benchmark(data_v, nM, nQ, data_order, last_not_na)
     else
         drift = hcat([mean(diff(data_v[:, i])[diff(data_v[:, i]).!==missing], dims=1) for i=1:nM+nQ]...);
     end
-
-    # TBA REMOVE THE DRIFT FOR INFLATION - JAN-19 FP
 
     output = Array{Float64}(undef, h, nM+nQ);
     for i=1:nM+nQ

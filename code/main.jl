@@ -1,7 +1,6 @@
 #=
 Name: main.jl
 Description: Execution manager
-Author: Filippo Pellegrino, f.pellegrino1@lse.ac.uk
 =#
 
 # Post burn-in size

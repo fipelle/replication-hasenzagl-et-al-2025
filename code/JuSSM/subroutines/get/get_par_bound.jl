@@ -2,8 +2,6 @@ function get_par_bound(θ_unb::X, MIN::X, MAX::X, opt_transf::Array{Int64, 1}) w
 # ----------------------------------------------------------------------------------------------------------------------
 # Change domain: from bounded to unbounded domain
 # - Transformation: 1 natural logarithm, 2 no transformations, 3 generalized logit
-#
-# Author: Filippo Pellegrino, f.pellegrino1@lse.ac.uk
 # ----------------------------------------------------------------------------------------------------------------------
 
      i1 = opt_transf .== 1;

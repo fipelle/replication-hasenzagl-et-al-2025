@@ -11,7 +11,6 @@ module JuSSM
 #
 # b) The latent states are drawn conditional to the model parameters.
 #
-# Author: Filippo Pellegrino, f.pellegrino1@lse.ac.uk
 # ----------------------------------------------------------------------------------------------------------------------
 
 	using DataFrames;
