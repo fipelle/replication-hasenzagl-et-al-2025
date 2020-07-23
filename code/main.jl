@@ -192,6 +192,8 @@ elseif run_type == 2
     # Save general settings as chunk0
     save("./results/res$(res_name)_chunk0.jld", Dict("estim" => estim, "data_vintages" => data_vintages,
        "data_vintages_year" => data_vintages_year, "unique_years" => unique_years,
-       "releases_per_year" => releases_per_year, "nDraws" => nDraws, "burnin" => burnin, "data" => data, "date" => date,
+       "releases_per_year" => releases_per_year, "nDraws" => nDraws, "burnin" => burnin, "data" => data,
+       "df_vintages" => df_vintages, "start_sample" => start_sample, "end_sample" => end_sample,
+        "transf" => transf, "transf_arg1" => transf_arg1, "transf_arg2" => transf_arg2,
        "nM" => nM, "nQ" => nQ, "MNEMONIC" => MNEMONIC, "data_order" => data_order));
 end
