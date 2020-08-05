@@ -147,7 +147,7 @@ for i=1:length(titles)
     end
 end
 
-p1 = plot(splots..., layout=(3,3), size=(1600,800));
+p1 = plot(splots..., layout=(3,3), size=(1600,1000));
 Plots.savefig(p1, "./img/rmsfe_plot.pdf");
 
 # Save to csv

@@ -185,6 +185,9 @@ elseif run_type == 2
              "BC" => BC, "EP" => EP, "T_INFL" => T_INFL));
     end
 
+    # Adjust data order before saving chunk0
+    data = data[:, data_order];
+
     # Save general settings as chunk0
     save("./results/res$(res_name)_chunk0.jld", Dict("estim" => estim, "data_vintages" => data_vintages,
        "data_vintages_year" => data_vintages_year, "unique_years" => unique_years,
