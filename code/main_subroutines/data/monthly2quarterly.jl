@@ -2,8 +2,6 @@ function monthly2quarterly(a,n)
 
     #=
     Filename: monthly2quarterly.jl
-    Author: Thomas Hasenzagl, thomas.hasenzagl@gmail.com
-    Date: 10/01/2016
 
     a: quarterly data
     n: length of resulting monthly array

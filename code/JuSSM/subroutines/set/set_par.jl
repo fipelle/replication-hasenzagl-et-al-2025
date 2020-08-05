@@ -2,8 +2,6 @@ function set_par!(θ_bound, θ_unb, par, opt_transf, MIN, MAX, par_ind, par_size
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Update the parameters of the state-space model
-#
-# Author: Filippo Pellegrino, f.pellegrino1@lse.ac.uk
 # ----------------------------------------------------------------------------------------------------------------------
 
 

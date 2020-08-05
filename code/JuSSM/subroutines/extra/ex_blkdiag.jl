@@ -3,8 +3,6 @@ function ex_blkdiag(args::Union{Array{W}, W}...) where W <: Union{Missing,Float6
     #=
     --------------------------------------------------------------------------------------------------------------------
     Description:   Custom built-in function: blkdiag
-    Author:        Filippo Pellegrino
-    Email:         filippopellegrino@gmail.com
     --------------------------------------------------------------------------------------------------------------------
     =#
 
@@ -23,8 +21,6 @@ function blkdiag_fun(x::Union{Array{W}, W}, y::Union{Array{W}, W}) where W <: Un
     #=
     --------------------------------------------------------------------------------------------------------------------
     Description:   Custom built-in function: blkdiag, single iteration
-    Author:        Filippo Pellegrino
-    Email:         filippopellegrino@gmail.com
     --------------------------------------------------------------------------------------------------------------------
     =#
 

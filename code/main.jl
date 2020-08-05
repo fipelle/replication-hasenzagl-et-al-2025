@@ -1,15 +1,75 @@
 #=
 Name: main.jl
 Description: Execution manager
-Author: Filippo Pellegrino, f.pellegrino1@lse.ac.uk
 =#
 
+# Post burn-in size
+n_distribution = nDraws-burnin;
+
 # Load data
-data, date, nM, nQ, MNEMONIC = read_data(data_path);
+if run_type == 1
+    data, date, nM, nQ, MNEMONIC = read_data(data_path);
+
+# Load data for out-of-sample
+else
+
+    # Load general info
+    MNEMONIC, nM, nQ, transf, transf_arg1, transf_arg2 = read_data_info(data_info_path);
+
+    # Load Fred data
+
+    # - For the YoY% transformation
+    if sum(transf .== 1) > 0
+        df_fred_vintages = get_fred_vintages(fred_data_path, start_sample-Year(1), end_sample, oos_start_date);
+
+    # - For the SPF transformation
+    elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
+        df_fred_vintages = get_fred_vintages(fred_data_path, start_sample-Month(3), end_sample, oos_start_date);
+
+    else
+        df_fred_vintages = get_fred_vintages(fred_data_path, start_sample, end_sample, oos_start_date);
+    end
+
+    # Load local data
+    df_local_vintages = get_local_vintages(local_data_path, end_sample, oos_start_date);
+
+    # Merge vintages
+    if size(df_fred_vintages,1) > 0 && size(df_local_vintages,1) > 0
+        df_vintages = outerjoin(df_fred_vintages, df_local_vintages, on=[:date, :vintage_id]);
+
+    # Use `df_fred_vintages` only
+    elseif size(df_fred_vintages,1) > 0 && size(df_local_vintages,1) == 0
+        df_vintages = copy(df_fred_vintages);
+
+    # Use `df_local_vintages` only
+    else
+        df_vintages = copy(df_local_vintages);
+    end
+
+    # Re-order the data so that the quarterly series follow the monthly ones
+    df_vintages = df_vintages[!, vcat([:vintage_id, :date], Symbol.(MNEMONIC))];
+    sort!(df_vintages, :vintage_id);
+
+    # Array of vintages
+
+    # - For the YoY% transformation
+    if sum(transf .== 1) > 0
+        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Year(1), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
+
+    # - For the SPF transformation
+    elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
+        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Month(3), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
+
+    else
+        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
+    end
+
+    # Last vintage
+    data = data_vintages[end];
+end
 
 # Dimensions
-m, n           = size(data);
-n_distribution = nDraws-burnin;
+m, n = size(data);
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -44,7 +104,7 @@ if run_type == 1
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Execution: run_type == 2
-# -  Out-of-sample: out-of-sample exercise
+# -  Out-of-sample
 # ----------------------------------------------------------------------------------------------------------------------
 
 elseif run_type == 2
@@ -60,10 +120,6 @@ elseif run_type == 2
         quarterly_position = quarterly_position[data_order];
         MNEMONIC = MNEMONIC[data_order];
     end
-
-    # Vintages per year
-    data_vintages, data_vintages_year, unique_years, releases_per_year = get_dataflow(data, date, data_path, h, oos_start_date);
-    data = [data; missing .* ones(h, nM+nQ)];
 
     # SPF is unrestricted
     quarterly_position[MNEMONIC.=="GDP SPF"] .= 0.0;
@@ -129,13 +185,14 @@ elseif run_type == 2
              "BC" => BC, "EP" => EP, "T_INFL" => T_INFL));
     end
 
-    # Transform variables to make them comparable with run_type==1
-    data     = data[:, data_order];
-    MNEMONIC = MNEMONIC[data_order];
+    # Adjust data order before saving chunk0
+    data = data[:, data_order];
 
     # Save general settings as chunk0
     save("./results/res$(res_name)_chunk0.jld", Dict("estim" => estim, "data_vintages" => data_vintages,
        "data_vintages_year" => data_vintages_year, "unique_years" => unique_years,
-       "releases_per_year" => releases_per_year, "nDraws" => nDraws, "burnin" => burnin, "data" => data, "date" => date,
+       "releases_per_year" => releases_per_year, "nDraws" => nDraws, "burnin" => burnin, "data" => data,
+       "df_vintages" => df_vintages, "start_sample" => start_sample, "end_sample" => end_sample,
+        "transf" => transf, "transf_arg1" => transf_arg1, "transf_arg2" => transf_arg2,
        "nM" => nM, "nQ" => nQ, "MNEMONIC" => MNEMONIC, "data_order" => data_order));
 end
