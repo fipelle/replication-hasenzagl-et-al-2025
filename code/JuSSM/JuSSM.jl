@@ -80,7 +80,7 @@ module JuSSM
 		BC::X
 		EP::X
 		T_INFL::X
-		last_GDP_state::X
+		GDP_trend::X
 		GDP::X
 		INFL::X
 	end

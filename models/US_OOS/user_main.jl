@@ -67,7 +67,7 @@ Out-of-sample: position of the states and variables of interest
 - BC
 - EP
 - T_INFL
-- last_GDP_state
+- GDP_trend
 - GDP
 - INFL
 =#
