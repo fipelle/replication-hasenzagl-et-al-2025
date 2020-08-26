@@ -145,15 +145,16 @@ function parallel_oos!(id_year, nM, nQ, h, data, data_order, MNEMONIC, estim, in
             α_draw, _  = kalman_diffuse!(par_draw, 0, 1, 1);
 
             # Store: Monthly GDP and output gap
-            parfor_monthly_gdp[1:size(α_draw,2), draw, v] = (par_draw.Z[1, 1:10]' * α_draw[1:10, :])' .* σʸ[1];
-            parfor_output_gap[1:size(α_draw,2), draw, v]  = 100*(sum(α_draw[[1,8],:],dims=1)./α_draw[10,:]')';
+            parfor_monthly_gdp[1:size(α_draw,2), draw, v] = (par_draw.Z[oos_position.GDP, 1:oos_position.last_GDP_state]' * α_draw[1:oos_position.last_GDP_state, :])' .* σʸ[oos_position.GDP];
+            parfor_output_gap[1:size(α_draw,2), draw, v]  = (par_draw.Z[oos_position.GDP, 1:oos_position.last_GDP_state-1]' * α_draw[1:oos_position.last_GDP_state-1, :])' ./
+                                                            (par_draw.Z[oos_position.GDP, oos_position.last_GDP_state] * α_draw[oos_position.last_GDP_state, :])';
 
             # Store: BC, EP and T_INFL
             parfor_BC_clean[1:size(α_draw,2), draw, v] = copy(α_draw[oos_position.BC,:]);
             parfor_EP_clean[1:size(α_draw,2), draw, v] = copy(α_draw[oos_position.EP,:]);
-            parfor_BC[1:size(α_draw,2), draw, v]       = (par_draw.Z[oos_position.INFL, 1:oos_position.EP-1]' * α_draw[1:oos_position.EP-1,:])' .* σʸ[oos_position.INFL];
-            parfor_EP[1:size(α_draw,2), draw, v]       = (par_draw.Z[oos_position.INFL, oos_position.EP] * α_draw[oos_position.EP,:])' .* σʸ[oos_position.INFL];
-            parfor_T_INFL[1:size(α_draw,2), draw, v]   = (par_draw.Z[oos_position.INFL, oos_position.T_INFL] * α_draw[oos_position.T_INFL,:])' .* σʸ[oos_position.INFL];
+            parfor_BC[1:size(α_draw,2), draw, v]       = (par_draw.Z[oos_position.INFL, 1:oos_position.EP-1]' * α_draw[1:oos_position.EP-1, :])' .* σʸ[oos_position.INFL];
+            parfor_EP[1:size(α_draw,2), draw, v]       = (par_draw.Z[oos_position.INFL, oos_position.EP:oos_position.T_INFL-1] * α_draw[oos_position.EP:oos_position.T_INFL-1, :])' .* σʸ[oos_position.INFL];
+            parfor_T_INFL[1:size(α_draw,2), draw, v]   = (par_draw.Z[oos_position.INFL, oos_position.T_INFL] * α_draw[oos_position.T_INFL, :])' .* σʸ[oos_position.INFL];
 
             # Store: Model forecast
             for var_id=1:nM+nQ
