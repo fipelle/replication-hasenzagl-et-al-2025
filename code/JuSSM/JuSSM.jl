@@ -76,6 +76,15 @@ module JuSSM
 		ρ::X
 	end
 
+	struct output_position{X <: Int64}
+		BC::X
+		EP::X
+		T_INFL::X
+		last_GDP_state::X
+		GDP::X
+		INFL::X
+	end
+
 	import Base.copy
 	Base.copy(m::ParSsm) 	= ParSsm([ copy(getfield(m, k)) for k = 1:length(fieldnames(typeof(m))) ]...);
     Base.copy(m::SizeParSsm) = SizeParSsm([ copy(getfield(m, k)) for k = 1:length(fieldnames(typeof(m))) ]...);
