@@ -7,64 +7,80 @@ Description: Execution manager
 n_distribution = nDraws-burnin;
 
 # Load data
+
+#=
+========================================================================================
+# This block of code is deprecated and was used to load in-sample data from Excel files.
+
 if run_type == 1
     data, date, nM, nQ, MNEMONIC = read_data(data_path);
+========================================================================================
+=#
 
-# Load data for out-of-sample
+# Load general info
+MNEMONIC, nM, nQ, transf, transf_arg1, transf_arg2 = read_data_info(data_info_path);
+
+# Load Fred data
+
+# - For the YoY% transformation
+if sum(transf .== 1) > 0
+    df_fred_vintages = get_fred_vintages(fred_data_path, start_sample-Year(1), end_sample, oos_start_date);
+
+# - For the SPF transformation
+elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
+    df_fred_vintages = get_fred_vintages(fred_data_path, start_sample-Month(3), end_sample, oos_start_date);
+
 else
+    df_fred_vintages = get_fred_vintages(fred_data_path, start_sample, end_sample, oos_start_date);
+end
 
-    # Load general info
-    MNEMONIC, nM, nQ, transf, transf_arg1, transf_arg2 = read_data_info(data_info_path);
+# Load local data
+df_local_vintages = get_local_vintages(local_data_path, end_sample, oos_start_date);
 
-    # Load Fred data
+# Merge vintages
+if size(df_fred_vintages,1) > 0 && size(df_local_vintages,1) > 0
+    df_vintages = outerjoin(df_fred_vintages, df_local_vintages, on=[:date, :vintage_id]);
 
-    # - For the YoY% transformation
-    if sum(transf .== 1) > 0
-        df_fred_vintages = get_fred_vintages(fred_data_path, start_sample-Year(1), end_sample, oos_start_date);
+# Use `df_fred_vintages` only
+elseif size(df_fred_vintages,1) > 0 && size(df_local_vintages,1) == 0
+    df_vintages = copy(df_fred_vintages);
 
-    # - For the SPF transformation
-    elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
-        df_fred_vintages = get_fred_vintages(fred_data_path, start_sample-Month(3), end_sample, oos_start_date);
+# Use `df_local_vintages` only
+else
+    df_vintages = copy(df_local_vintages);
+end
 
-    else
-        df_fred_vintages = get_fred_vintages(fred_data_path, start_sample, end_sample, oos_start_date);
-    end
+# Re-order the data so that the quarterly series follow the monthly ones
+df_vintages = df_vintages[!, vcat([:vintage_id, :date], Symbol.(MNEMONIC))];
+sort!(df_vintages, :vintage_id);
 
-    # Load local data
-    df_local_vintages = get_local_vintages(local_data_path, end_sample, oos_start_date);
+# Array of vintages
 
-    # Merge vintages
-    if size(df_fred_vintages,1) > 0 && size(df_local_vintages,1) > 0
-        df_vintages = outerjoin(df_fred_vintages, df_local_vintages, on=[:date, :vintage_id]);
+# - For the YoY% transformation
+if sum(transf .== 1) > 0
+    data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Year(1), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
 
-    # Use `df_fred_vintages` only
-    elseif size(df_fred_vintages,1) > 0 && size(df_local_vintages,1) == 0
-        df_vintages = copy(df_fred_vintages);
+# - For the SPF transformation
+elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
+    data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Month(3), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
 
-    # Use `df_local_vintages` only
-    else
-        df_vintages = copy(df_local_vintages);
-    end
+else
+    data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
+end
 
-    # Re-order the data so that the quarterly series follow the monthly ones
-    df_vintages = df_vintages[!, vcat([:vintage_id, :date], Symbol.(MNEMONIC))];
-    sort!(df_vintages, :vintage_id);
+# Last vintage
+if run_type == 1
 
-    # Array of vintages
+    # Find iis_release index
+    unique_releases = sort(unique(df_vintages[!,:vintage_id]));
+    diff_days = abs.(unique_releases .- iis_release);
+    ind_iis_release = findall(diff_days .== minimum(diff_days))[1];
 
-    # - For the YoY% transformation
-    if sum(transf .== 1) > 0
-        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Year(1), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
-
-    # - For the SPF transformation
-    elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
-        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Month(3), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
-
-    else
-        data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
-    end
-
-    # Last vintage
+    # Select vintage
+    @info("Selected vintage released on the $(unique_releases[ind_iis_release]) for in-sample estimation.");
+    data = data_vintages[ind_iis_release];
+    date = # TBA dates
+else
     data = data_vintages[end];
 end
 
