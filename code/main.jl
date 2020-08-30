@@ -8,14 +8,13 @@ n_distribution = nDraws-burnin;
 
 # Load data
 
-#=
-========================================================================================
-# This block of code is deprecated and was used to load in-sample data from Excel files.
 
-if run_type == 1
-    data, date, nM, nQ, MNEMONIC = read_data(data_path);
-========================================================================================
-=#
+# ---------------------------------------------------------------------------------------------------------------------
+# The following block of code is deprecated and it was used to load in-sample data from Excel files.
+# ---------------------------------------------------------------------------------------------------------------------
+#
+# data, date, nM, nQ, MNEMONIC = read_data(data_path);
+# ---------------------------------------------------------------------------------------------------------------------
 
 # Load general info
 MNEMONIC, nM, nQ, transf, transf_arg1, transf_arg2 = read_data_info(data_info_path);
