@@ -57,10 +57,24 @@ Run type
 run_type = 2;
 res_name = "";
 
-# Out-of-sample dates
+#=
+------------------------------------------------------------------------------------------------------------------------
+Alfred settings
+------------------------------------------------------------------------------------------------------------------------
+
+1. iis_release and oos_start_date: "oos_start_date" is the date from which the code starts downloading
+   the real-time vintages. In the in-sample estimation "oos_start_date" is used (for simplicity) to download
+   a range of vintages from which only the data released closer to "iis_release" is selected and used.
+
+2. start_sample and end_sample: first and last observations of interest.
+
+Note: "iis_release" is used for the in-sample estimation (run_type==1) only.
+------------------------------------------------------------------------------------------------------------------------
+=#
+iis_release = "";
 oos_start_date = Dates.Date("01-01-2005", "dd-mm-yyyy");
 start_sample = Dates.Date("01-01-1985", "dd-mm-yyyy");
-end_sample = Dates.Date("30-06-2020", "dd-mm-yyyy");
+end_sample = Dates.Date("31-08-2020", "dd-mm-yyyy");
 
 #=
 Out-of-sample: position of the states and variables of interest

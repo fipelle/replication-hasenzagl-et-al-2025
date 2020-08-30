@@ -24,7 +24,7 @@ using Distributed;
 @everywhere include("../../code/main_subroutines/oos/parallel_oos!.jl");
 
 # Model-specific dependencies
-@everywhere include("../../code/ssm_settings.jl");
+@everywhere include("../../code/ssm_settings_with_CBO.jl");
 
 # Data paths
 data_info_path = "./data/US_info.xlsx";
@@ -54,13 +54,27 @@ Run type
 ------------------------------------------------------------------------------------------------------------------------
 =#
 
-run_type = 2;
+run_type = 1;
 res_name = "";
 
-# Out-of-sample dates
+#=
+------------------------------------------------------------------------------------------------------------------------
+Alfred settings
+------------------------------------------------------------------------------------------------------------------------
+
+1. iis_release and oos_start_date: "oos_start_date" is the date from which the code starts downloading
+   the real-time vintages. In the in-sample estimation "oos_start_date" is used (for simplicity) to download
+   a range of vintages from which only the data released closer to "iis_release" is selected and used.
+
+2. start_sample and end_sample: first and last observations of interest.
+
+Note: "iis_release" is used for the in-sample estimation (run_type==1) only.
+------------------------------------------------------------------------------------------------------------------------
+=#
+iis_release = Dates.Date("31-12-2019", "dd-mm-yyyy");
 oos_start_date = Dates.Date("01-01-2005", "dd-mm-yyyy");
 start_sample = Dates.Date("01-01-1985", "dd-mm-yyyy");
-end_sample = Dates.Date("30-06-2020", "dd-mm-yyyy");
+end_sample = Dates.Date("31-08-2020", "dd-mm-yyyy");
 
 #=
 Out-of-sample: position of the states and variables of interest
@@ -71,10 +85,11 @@ Out-of-sample: position of the states and variables of interest
 - GDP
 - INFL
 =#
-oos_position = output_position(1, 5, 7, 10, 1, 6);
+oos_position = output_position(1, 5, 7, 10, 2, 7);
 
 #=
 Data order is:
+- CBO
 - GDP
 - GDP SPF
 - URATE
@@ -84,7 +99,7 @@ Data order is:
 - INFL SPF
 - EXP INFL
 =#
-data_order = [6; 7; collect(1:4); 8; 5];
+data_order = [7; 6; 8; collect(1:4); 9; 5];
 
 # Estimate loading for the common trend (associated to EXP INFL)
 estim = false;

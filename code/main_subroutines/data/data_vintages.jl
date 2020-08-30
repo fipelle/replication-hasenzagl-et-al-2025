@@ -370,5 +370,5 @@ function get_vintages(df_vintages::DataFrame, start_sample::Date, end_sample::Da
     end
 
     # Return output
-    return data_vintages, data_vintages_year, unique_years, releases_per_year;
+    return data_vintages, data_vintages_year, unique_years, releases_per_year, unique_releases;
 end
