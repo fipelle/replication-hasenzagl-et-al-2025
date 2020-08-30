@@ -58,28 +58,30 @@ sort!(df_vintages, :vintage_id);
 
 # - For the YoY% transformation
 if sum(transf .== 1) > 0
-    data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Year(1), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
+    data_vintages, data_vintages_year, unique_years, releases_per_year, unique_releases = get_vintages(df_vintages, start_sample-Year(1), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
 
 # - For the SPF transformation
 elseif sum(transf .== 1) == 0 && sum(transf .== 3) > 0
-    data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample-Month(3), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
+    data_vintages, data_vintages_year, unique_years, releases_per_year, unique_releases = get_vintages(df_vintages, start_sample-Month(3), end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
 
 else
-    data_vintages, data_vintages_year, unique_years, releases_per_year = get_vintages(df_vintages, start_sample, end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
+    data_vintages, data_vintages_year, unique_years, releases_per_year, unique_releases = get_vintages(df_vintages, start_sample, end_sample, MNEMONIC, transf, transf_arg1, transf_arg2, nM, h);
 end
 
 # Last vintage
 if run_type == 1
 
     # Find iis_release index
-    unique_releases = sort(unique(df_vintages[!,:vintage_id]));
     diff_days = abs.(unique_releases .- iis_release);
     ind_iis_release = findall(diff_days .== minimum(diff_days))[1];
 
-    # Select vintage
+    # Select vintage and remove last h missings
     @info("Selected vintage released on the $(unique_releases[ind_iis_release]) for in-sample estimation.");
-    data = data_vintages[ind_iis_release];
-    date = # TBA dates
+    data = data_vintages[ind_iis_release][1:end-h, :];
+
+    # Generate corresponding vector of reference dates
+    date = Dates.lastdayofmonth.(collect(range(start_sample,length=size(data,1),step=Dates.Month(1))));
+
 else
     data = data_vintages[end];
 end
