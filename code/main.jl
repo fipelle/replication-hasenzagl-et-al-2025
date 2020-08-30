@@ -173,7 +173,7 @@ elseif run_type == 2
 
         # Run parallel_oos!
         parallel_oos!(id_year, nM, nQ, h, data, data_order, MNEMONIC, estim, ind_restr_states, nDraws, burnin, data_vintages,
-                      data_vintages_year, unique_years, releases_per_year, density_forecasts,
+                      data_vintages_year, unique_years, releases_per_year, oos_position, density_forecasts,
                       point_forecasts, rw_forecasts, outturn, parameters, states,
                       monthly_gdp, output_gap, BC_clean, EP_clean, BC, EP, T_INFL);
 

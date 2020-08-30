@@ -76,6 +76,15 @@ module JuSSM
 		ρ::X
 	end
 
+	struct output_position{X <: Int64}
+		BC::X
+		EP::X
+		T_INFL::X
+		GDP_trend::X
+		GDP::X
+		INFL::X
+	end
+
 	import Base.copy
 	Base.copy(m::ParSsm) 	= ParSsm([ copy(getfield(m, k)) for k = 1:length(fieldnames(typeof(m))) ]...);
     Base.copy(m::SizeParSsm) = SizeParSsm([ copy(getfield(m, k)) for k = 1:length(fieldnames(typeof(m))) ]...);
@@ -111,5 +120,5 @@ module JuSSM
 	# Export functions
 	# -----------------------------------------------------------------------------------------------------------------
 
-	export kalman_diffuse!, JuSSM_main, ex_blkdiag, ex_inv, ex_ismember, set_par_fast!, ParSsm, SizeParSsm, BoolParSsm, PriorOpt;
+	export kalman_diffuse!, JuSSM_main, ex_blkdiag, ex_inv, ex_ismember, set_par_fast!, ParSsm, SizeParSsm, BoolParSsm, PriorOpt, output_position;
 end

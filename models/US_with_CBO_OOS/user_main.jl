@@ -57,10 +57,21 @@ Run type
 run_type = 2;
 res_name = "";
 
-# Out-of-sample options
+# Out-of-sample dates
 oos_start_date = Dates.Date("01-01-2005", "dd-mm-yyyy");
 start_sample = Dates.Date("01-01-1985", "dd-mm-yyyy");
 end_sample = Dates.Date("30-06-2020", "dd-mm-yyyy");
+
+#=
+Out-of-sample: position of the states and variables of interest
+- BC
+- EP
+- T_INFL
+- GDP_trend
+- GDP
+- INFL
+=#
+oos_position = output_position(1, 5, 7, 10, 2, 7);
 
 #=
 Data order is:
