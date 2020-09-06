@@ -1,7 +1,8 @@
 function parallel_oos!(id_year, nM, nQ, h, data, data_order, MNEMONIC, estim, ind_restr_states, nDraws, burnin, data_vintages,
                        data_vintages_year, unique_years, releases_per_year, oos_position, parfor_density_forecasts,
                        parfor_point_forecasts, parfor_rw_forecasts, parfor_outturn, parfor_parameters, parfor_states,
-                       parfor_monthly_gdp, parfor_output_gap, parfor_BC_clean, parfor_EP_clean, parfor_BC, parfor_EP, parfor_T_INFL)
+                       parfor_monthly_gdp, parfor_output_gap, parfor_potential_output, parfor_BC_clean, parfor_EP_clean,
+                       parfor_BC, parfor_EP, parfor_T_INFL)
 
     @info("parallel_oos! > Starting $(unique_years[id_year]) out-of-sample");
 
@@ -148,6 +149,8 @@ function parallel_oos!(id_year, nM, nQ, h, data, data_order, MNEMONIC, estim, in
             parfor_monthly_gdp[1:size(α_draw,2), draw, v] = (par_draw.Z[oos_position.GDP, 1:oos_position.GDP_trend]' * α_draw[1:oos_position.GDP_trend, :])' .* σʸ[oos_position.GDP];
             parfor_output_gap[1:size(α_draw,2), draw, v]  = 100 .* (par_draw.Z[oos_position.GDP, 1:oos_position.GDP_trend-1]' * α_draw[1:oos_position.GDP_trend-1, :])' ./
                                                                    (par_draw.Z[oos_position.GDP, oos_position.GDP_trend] * α_draw[oos_position.GDP_trend, :]);
+
+            parfor_potential_output[1:size(α_draw,2), draw, v]  = (par_draw.Z[oos_position.GDP, oos_position.GDP_trend] * α_draw[oos_position.GDP_trend, :]) .* σʸ[oos_position.GDP];
 
             # Store: BC, EP and T_INFL
             parfor_BC_clean[1:size(α_draw,2), draw, v] = copy(α_draw[oos_position.BC,:]);
