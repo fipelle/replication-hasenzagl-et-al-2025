@@ -138,7 +138,16 @@ estimation (run_type = 1).
 =#
 elseif run_type == 2
 
-    data, MNEMONIC, quarterly_position, σʸ = standardize_data(data, nM, nQ, h, data_order, MNEMONIC);
+    # Load parameters from in-sample output
+    res_iis   = jldopen("$(pwd())/$(res_iis_name).jld");
+    σʸ        = read(res_iis["σʸ"]);
+    distr_par = read(res_iis["distr_par"]);
+    nDraws    = read(res_iis["nDraws"]);
+    burnin    = read(res_iis["burnin"]);
+    @info("Loaded in-sample output.\\Replaced nDraws and burnin with values in $(res_iis_name).jld");
+
+    # Standardise data with in-sample σʸ
+    data, MNEMONIC, quarterly_position, _ = standardize_data(data, nM, nQ, h, data_order, MNEMONIC, σʸ=σʸ);
     data = [data; missing.*ones(h, nM+nQ)];
 
     # SPF is unrestricted
@@ -147,9 +156,19 @@ elseif run_type == 2
 
     @info("Data order: $MNEMONIC")
 
-    # Run JuSSM
-    distr_α, distr_fcst, chain_θ_unb, chain_θ_bound, par, par_ind, par_size, distr_par =
-        ssm_settings(data, h, nDraws, burnin, σʸ, quarterly_position, estim, ind_restr_states);
+    # Loop over variables and draws
+    for draw=1:nDraws-burnin
+
+        # Draw
+        par_draw   = distr_par[draw];
+        par_draw.y = data_v';
+        α_draw, _  = kalman_diffuse!(par_draw, 0, 1, 1);
+
+        # Store: Model forecast
+        for var_id=1:nM+nQ
+            parfor_density_forecasts[:, var_id, draw, v] = (par_draw.Z[var_id, :]' * α_draw[:, last_not_na[var_id]+1:forecast_ends[var_id]])' .*σʸ[var_id];
+        end
+    end
 
     # Remove the trailing h missing observations in data and the standardisation
     data = data[1:end-h, :].*σʸ';
