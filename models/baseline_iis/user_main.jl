@@ -80,8 +80,12 @@ oos_start_date = Dates.Date("01-01-2005", "dd-mm-yyyy");
 start_sample = Dates.Date("01-01-1985", "dd-mm-yyyy");
 end_sample = Dates.Date("31-08-2020", "dd-mm-yyyy");
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Residual settings
+# ----------------------------------------------------------------------------------------------------------------------
+
 #=
-Out-of-sample: position of the states and variables of interest
+Out-of-sample: position of the states and variables of interest [used only when run_type == 3]
 - BC
 - EP
 - T_INFL
@@ -90,6 +94,9 @@ Out-of-sample: position of the states and variables of interest
 - INFL
 =#
 oos_position = output_position(1, 5, 7, 10, 1, 6);
+
+# Conditional forecast: conditioning path [used only when run_type == 2]
+cond = Dict();
 
 #=
 Data order is:
