@@ -49,11 +49,11 @@ burnin = 5000;
 ------------------------------------------------------------------------------------------------------------------------
 Run type
 ------------------------------------------------------------------------------------------------------------------------
-1. In-sample estimation: it executes the code using a single selected data vintage
+1. In-sample estimation: it executes the code using a single selected data vintage.
 2. Conditional forecast: it executes a series of conditional forecast on the basis of the in-sample coefficients,
    and using a single selected data vintage. This option can be used only after having previously run the in-sample
    estimation (run_type = 1).
-3. Out-of-sample (real-time or pseudo, dependings on the settings in the Excel input)
+3. Out-of-sample (real-time or pseudo, dependings on the settings in the Excel input).
 ------------------------------------------------------------------------------------------------------------------------
 =#
 
@@ -65,13 +65,13 @@ res_name = "";
 Alfred settings
 ------------------------------------------------------------------------------------------------------------------------
 
-1. iis_release and oos_start_date: "oos_start_date" is the date from which the code starts downloading
-   the real-time vintages. In the in-sample estimation "oos_start_date" is used (for simplicity) to download
-   a range of vintages from which only the data released closer to "iis_release" is selected and used.
+1. iis_release and oos_start_date: "oos_start_date" is the date from which the code starts downloading the real-time
+   vintages. In the in-sample estimation and when computing conditional forecasts, "oos_start_date" is used (for
+   simplicity) to download a range of vintages from which only the data released closer to "iis_release" is selected
+   and used. In other words, "iis_release" represents the date closer to the release of the vintage selected for
+   in-sample estimation and to compute conditional forecasts. It is not used for the out-of-sample estimation.
 
 2. start_sample and end_sample: first and last observations of interest.
-
-Note: "iis_release" is used for the in-sample estimation (run_type==1) only.
 ------------------------------------------------------------------------------------------------------------------------
 =#
 iis_release = "";
