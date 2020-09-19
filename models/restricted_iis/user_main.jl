@@ -49,8 +49,11 @@ burnin = 5000;
 ------------------------------------------------------------------------------------------------------------------------
 Run type
 ------------------------------------------------------------------------------------------------------------------------
-1. Single iteration: it executes the code using the most updated datapoints
-2. Out-of-sample (real-time or pseudo, dependings on the settings in the Excel input)
+1. In-sample estimation: it executes the code using a single selected data vintage
+2. Conditional forecast: it executes a series of conditional forecast on the basis of the in-sample coefficients,
+   and using a single selected data vintage. This option can be used only after having previously run the in-sample
+   estimation (run_type = 1).
+3. Out-of-sample (real-time or pseudo, dependings on the settings in the Excel input)
 ------------------------------------------------------------------------------------------------------------------------
 =#
 
