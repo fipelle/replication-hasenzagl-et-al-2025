@@ -117,7 +117,7 @@ if run_type == 1
     distr_α, distr_fcst, chain_θ_unb, chain_θ_bound, par, par_ind, par_size, distr_par =
         ssm_settings(data, h, nDraws, burnin, σʸ, quarterly_position, estim, ind_restr_states);
 
-    # Transform variables to make them comparable with run_type==2
+    # Remove the trailing h missing observations in data and the standardisation
     data = data[1:end-h, :].*σʸ';
 
     # Save res in jld format
@@ -138,6 +138,27 @@ estimation (run_type = 1).
 =#
 elseif run_type == 2
 
+    data, MNEMONIC, quarterly_position, σʸ = standardize_data(data, nM, nQ, h, data_order, MNEMONIC);
+    data = [data; missing.*ones(h, nM+nQ)];
+
+    # SPF is unrestricted
+    quarterly_position[MNEMONIC.=="GDP SPF"] .= 0.0;
+    quarterly_position[MNEMONIC.=="INFL SPF"] .= 0.0;
+
+    @info("Data order: $MNEMONIC")
+
+    # Run JuSSM
+    distr_α, distr_fcst, chain_θ_unb, chain_θ_bound, par, par_ind, par_size, distr_par =
+        ssm_settings(data, h, nDraws, burnin, σʸ, quarterly_position, estim, ind_restr_states);
+
+    # Remove the trailing h missing observations in data and the standardisation
+    data = data[1:end-h, :].*σʸ';
+
+    # Save res in jld format
+    save("./results/res$(res_name).jld", Dict("distr_α" => distr_α, "distr_fcst" => distr_fcst,
+        "chain_θ_unb" => chain_θ_unb, "chain_θ_bound" => chain_θ_bound, "par" => par, "data_order" => data_order,
+        "nDraws" => nDraws, "burnin" => burnin, "data" => data, "date" => date, "nM" => nM, "nQ" => nQ,
+        "MNEMONIC" => MNEMONIC, "par_ind" => par_ind, "par_size" => par_size, "distr_par" => distr_par, "σʸ" => σʸ));
 
 #=
 ------------------------------------------------------------------------------------------------------------------------
