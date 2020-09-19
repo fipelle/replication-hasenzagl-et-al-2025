@@ -139,7 +139,7 @@ estimation (run_type = 1).
 elseif run_type == 2
 
     # Load parameters from in-sample output
-    res_iis   = jldopen("$(pwd())/$(res_iis_name).jld");
+    res_iis   = jldopen("$(pwd())/res$(res_iis_name).jld");
     σʸ        = read(res_iis["σʸ"]);
     distr_par = read(res_iis["distr_par"]);
     nDraws    = read(res_iis["nDraws"]);

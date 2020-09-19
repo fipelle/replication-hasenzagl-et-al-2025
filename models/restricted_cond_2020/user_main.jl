@@ -57,8 +57,9 @@ Run type
 ------------------------------------------------------------------------------------------------------------------------
 =#
 
-run_type = 1;
+run_type = 2;
 res_name = "";
+res_iis_name = "_iis_2019"; # used only in run_type == 2 to load the in-sample coefficients
 
 #=
 ------------------------------------------------------------------------------------------------------------------------
@@ -74,7 +75,7 @@ Alfred settings
 2. start_sample and end_sample: first and last observations of interest.
 ------------------------------------------------------------------------------------------------------------------------
 =#
-iis_release = today();
+iis_release = Dates.Date("31-08-2020", "dd-mm-yyyy");
 oos_start_date = Dates.Date("01-01-2005", "dd-mm-yyyy");
 start_sample = Dates.Date("01-01-1985", "dd-mm-yyyy");
 end_sample = Dates.Date("31-08-2020", "dd-mm-yyyy");

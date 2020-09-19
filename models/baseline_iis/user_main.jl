@@ -59,6 +59,7 @@ Run type
 
 run_type = 1;
 res_name = "";
+res_iis_name = ""; # used only in run_type == 2 to load the in-sample coefficients
 
 #=
 ------------------------------------------------------------------------------------------------------------------------
