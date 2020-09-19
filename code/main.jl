@@ -8,7 +8,6 @@ n_distribution = nDraws-burnin;
 
 # Load data
 
-
 # ---------------------------------------------------------------------------------------------------------------------
 # The following block of code is deprecated and it was used to load in-sample data from Excel files.
 # ---------------------------------------------------------------------------------------------------------------------
@@ -68,32 +67,41 @@ else
 end
 
 # Last vintage
-if run_type == 1
+if run_type == 1 || run_type == 2
 
     # Find iis_release index
     diff_days = abs.(unique_releases .- iis_release);
     ind_iis_release = findall(diff_days .== minimum(diff_days))[1];
 
     # Select vintage and remove last h missings
-    @info("Selected vintage released on the $(unique_releases[ind_iis_release]) for in-sample estimation.");
+    if run_type == 1
+        @info("Selected vintage released on the $(unique_releases[ind_iis_release]) for in-sample estimation.");
+    else
+        @info("Selected vintage released on the $(unique_releases[ind_iis_release]) for conditional forecast estimation.");
+    end
+
     data = data_vintages[ind_iis_release][1:end-h, :];
 
     # Generate corresponding vector of reference dates
     date = Dates.lastdayofmonth.(collect(range(start_sample,length=size(data,1),step=Dates.Month(1))));
 
-else
+elseif run_type == 3
     data = data_vintages[end];
+
+else
+    error("Wrong run_type!");
 end
 
 # Dimensions
 m, n = size(data);
 
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Execution: run_type == 1
-# - Single iteration: it executes the code using the most updated datapoints
-# ----------------------------------------------------------------------------------------------------------------------
-
+#=
+------------------------------------------------------------------------------------------------------------------------
+Run type == 1
+------------------------------------------------------------------------------------------------------------------------
+In-sample estimation: it executes the code using a single selected data vintage.
+------------------------------------------------------------------------------------------------------------------------
+=#
 if run_type == 1
 
     data, MNEMONIC, quarterly_position, σʸ = standardize_data(data, nM, nQ, h, data_order, MNEMONIC);
@@ -119,12 +127,26 @@ if run_type == 1
         "MNEMONIC" => MNEMONIC, "par_ind" => par_ind, "par_size" => par_size, "distr_par" => distr_par, "σʸ" => σʸ));
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# Execution: run_type == 2
-# -  Out-of-sample
-# ----------------------------------------------------------------------------------------------------------------------
-
+#=
+------------------------------------------------------------------------------------------------------------------------
+Run type == 2
+------------------------------------------------------------------------------------------------------------------------
+Conditional forecast: it executes a series of conditional forecast on the basis of the in-sample coefficients,
+and using a single selected data vintage. This option can be used only after having previously run the in-sample
+estimation (run_type = 1).
+------------------------------------------------------------------------------------------------------------------------
+=#
 elseif run_type == 2
+
+
+#=
+------------------------------------------------------------------------------------------------------------------------
+Run type == 3
+------------------------------------------------------------------------------------------------------------------------
+Out-of-sample (real-time or pseudo, dependings on the settings in the Excel input).
+------------------------------------------------------------------------------------------------------------------------
+=#
+elseif run_type == 3
 
     # --------------------------------------------
     # Initialise
