@@ -139,7 +139,7 @@ estimation (run_type = 1).
 elseif run_type == 2
 
     # Load parameters from in-sample output
-    res_iis   = jldopen("$(pwd())/res$(res_iis_name).jld");
+    res_iis   = JLD.jldopen("$(pwd())/res$(res_iis_name).jld");
     σʸ        = read(res_iis["σʸ"]);
     distr_par = read(res_iis["distr_par"]);
     nDraws    = read(res_iis["nDraws"]);
@@ -148,7 +148,23 @@ elseif run_type == 2
 
     # Standardize data with in-sample σʸ
     data, MNEMONIC, quarterly_position, _ = standardize_data(data, nM, nQ, h, data_order, MNEMONIC, σʸ);
-    data = [data; missing.*ones(h, nM+nQ)];
+
+    # Conditioning path
+    if isempty(cond)
+        data = [data; missing .* ones(h, n)];
+
+    else
+        cond_keys   = collect(keys(cond));
+        cond_values = collect(values(cond));
+        cond_pos    = vcat([findall(MNEMONIC .== j) for j in cond_keys]...);
+        cond_h      = length.(cond_values);
+
+        # Add h trailing missings if necessary
+        data = [data; missing .* ones(maximum([h; cond_h]), n)];
+        for j=1:length(cond_pos)
+            data[m+1:m+cond_h[j], cond_pos[j]] = cond_values[j] ./ σʸ[cond_pos[j]];
+        end
+    end
 
     # SPF is unrestricted
     quarterly_position[MNEMONIC.=="GDP SPF"] .= 0.0;

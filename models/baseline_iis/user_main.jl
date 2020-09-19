@@ -9,7 +9,7 @@ using Distributed;
 @everywhere using LinearAlgebra;
 @everywhere using Random;
 @everywhere using Statistics;
-@everywhere using FileIO, CSV, XLSX;
+@everywhere using FileIO, CSV, JLD, XLSX;
 @everywhere using DataFrames;
 @everywhere using Logging;
 @everywhere using FredData;
