@@ -32,7 +32,7 @@ local_data_path = "./data/US_local.xlsx";
 fred_data_path = "./data/US_fred.xlsx";
 
 # Forecast horizon
-h = 36; # forecast horizon [it is used when run_type is 1 or 2]
+h = 36;
 
 
 # ----------------------------------------------------------------------------------------------------------------------
