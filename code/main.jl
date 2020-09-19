@@ -146,8 +146,8 @@ elseif run_type == 2
     burnin    = read(res_iis["burnin"]);
     @info("Loaded in-sample output.\\Replaced nDraws and burnin with values in $(res_iis_name).jld");
 
-    # Standardise data with in-sample σʸ
-    data, MNEMONIC, quarterly_position, _ = standardize_data(data, nM, nQ, h, data_order, MNEMONIC, σʸ=σʸ);
+    # Standardize data with in-sample σʸ
+    data, MNEMONIC, quarterly_position, _ = standardize_data(data, nM, nQ, h, data_order, MNEMONIC, σʸ);
     data = [data; missing.*ones(h, nM+nQ)];
 
     # SPF is unrestricted
