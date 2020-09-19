@@ -156,28 +156,34 @@ elseif run_type == 2
 
     @info("Data order: $MNEMONIC")
 
+    # --------------------------------------------
+    # Compute conditional forecast output
+    # --------------------------------------------
+
+    # Initialise output
+    # Note: at this stage the data is transposed wrt JuSSM_run.jl -> m, n = size(data) is correct.
+    k               = size(distr_par[1].T)[1];
+    m, n            = size(data);
+    distr_cond_α    = zeros(k, m, nDraws-burnin);
+    distr_cond_fcst = zeros(m, n, nDraws-burnin);
+
     # Loop over variables and draws
     for draw=1:nDraws-burnin
 
         # Draw
         par_draw   = distr_par[draw];
-        par_draw.y = data_v';
+        par_draw.y = data';
         α_draw, _  = kalman_diffuse!(par_draw, 0, 1, 1);
 
-        # Store: Model forecast
-        for var_id=1:nM+nQ
-            parfor_density_forecasts[:, var_id, draw, v] = (par_draw.Z[var_id, :]' * α_draw[:, last_not_na[var_id]+1:forecast_ends[var_id]])' .*σʸ[var_id];
-        end
+        # Store states
+        distr_cond_α[:, :, draw-burnin] = α_draw;
+
+        # Store conditional forecasts (the predictions are for standardised data, as for the in-sample estimation)
+        distr_cond_fcst[:, :, draw-burnin] = (par_draw.Z*α_draw)';
     end
 
-    # Remove the trailing h missing observations in data and the standardisation
-    data = data[1:end-h, :].*σʸ';
-
     # Save res in jld format
-    save("./results/res$(res_name).jld", Dict("distr_α" => distr_α, "distr_fcst" => distr_fcst,
-        "chain_θ_unb" => chain_θ_unb, "chain_θ_bound" => chain_θ_bound, "par" => par, "data_order" => data_order,
-        "nDraws" => nDraws, "burnin" => burnin, "data" => data, "date" => date, "nM" => nM, "nQ" => nQ,
-        "MNEMONIC" => MNEMONIC, "par_ind" => par_ind, "par_size" => par_size, "distr_par" => distr_par, "σʸ" => σʸ));
+    save("./results/res$(res_name).jld", Dict("distr_cond_α" => distr_cond_α, "distr_cond_fcst" => distr_cond_fcst));
 
 #=
 ------------------------------------------------------------------------------------------------------------------------

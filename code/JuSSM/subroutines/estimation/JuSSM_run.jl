@@ -10,7 +10,7 @@ function JuSSM_run(θ_unb::Array{Float64,1}, par::ParSsm, h::Int64, par_ind::Boo
     k             = size(par.T)[1];
     n, m          = size(par.y);
     distr_α       = zeros(k, m, nDraws-burnin);
-    distr_fcst    = zeros(m, n, nDraws-burnin); # h+1 includes the nowcast horizon
+    distr_fcst    = zeros(m, n, nDraws-burnin);
     distr_par     = Array{Any}(undef, nDraws-burnin);
     chain_θ_unb   = zeros(par_size.θ, nDraws);
     chain_θ_bound = zeros(par_size.θ, nDraws);
