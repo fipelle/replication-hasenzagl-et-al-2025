@@ -144,7 +144,7 @@ elseif run_type == 2
     distr_par = read(res_iis["distr_par"]);
     nDraws    = read(res_iis["nDraws"]);
     burnin    = read(res_iis["burnin"]);
-    @info("Loaded in-sample output.\\Replaced nDraws and burnin with values in $(res_iis_name).jld");
+    @info("Loaded in-sample output. Replaced nDraws and burnin with values in res$(res_iis_name).jld");
 
     # Standardize data with in-sample σʸ
     data, MNEMONIC, quarterly_position, _ = standardize_data(data, nM, nQ, h, data_order, MNEMONIC, σʸ);
@@ -192,10 +192,10 @@ elseif run_type == 2
         α_draw, _  = kalman_diffuse!(par_draw, 0, 1, 1);
 
         # Store states
-        distr_cond_α[:, :, draw-burnin] = α_draw;
+        distr_cond_α[:, :, draw] = α_draw;
 
         # Store conditional forecasts (the predictions are for standardised data, as for the in-sample estimation)
-        distr_cond_fcst[:, :, draw-burnin] = (par_draw.Z*α_draw)';
+        distr_cond_fcst[:, :, draw] = (par_draw.Z*α_draw)';
     end
 
     # Save res in jld format
