@@ -251,8 +251,7 @@ elseif run_type == 3
         parameters        = Array{Float64}(undef, size_θ, nDraws);               # full chain incl. burnin period
         states            = Array{Float64}(undef, k, m+h, n_distribution);
 
-        # Monthly GDP and ouput gap
-        monthly_gdp = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
+        # Output gap and potential output
         output_gap  = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
         potential_output = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
 
@@ -265,7 +264,6 @@ elseif run_type == 3
 
         # Initialise to NaNs
         states      .= NaN;
-        monthly_gdp .= NaN;
         output_gap  .= NaN;
         potential_output .= NaN;
         BC_clean    .= NaN;
@@ -278,13 +276,13 @@ elseif run_type == 3
         parallel_oos!(id_year, nM, nQ, h, data, data_order, MNEMONIC, estim, ind_restr_states, nDraws, burnin, data_vintages,
                       data_vintages_year, unique_years, releases_per_year, oos_position, density_forecasts,
                       point_forecasts, rw_forecasts, outturn, parameters, states,
-                      monthly_gdp, output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL);
+                      output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL);
 
         # Save id_year-th chunk
         save("./results/res$(res_name)_chunk$(id_year).jld", Dict("id_year" => id_year,
              "density_forecasts" => density_forecasts,  "point_forecasts" => point_forecasts,
              "rw_forecasts" => rw_forecasts, "outturn" => outturn, "parameters" => parameters, "states" => states,
-             "monthly_gdp" => monthly_gdp, "output_gap" => output_gap, "potential_output" => potential_output,
+             "output_gap" => output_gap, "potential_output" => potential_output,
              "BC_clean" => BC_clean, "EP_clean" => EP_clean, "BC" => BC, "EP" => EP, "T_INFL" => T_INFL));
     end
 
