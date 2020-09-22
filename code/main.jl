@@ -140,7 +140,7 @@ elseif run_type == 2
 
     # Load parameters from in-sample output
     res_iis   = JLD.jldopen("$(pwd())/results/res$(res_iis_name).jld");
-    σʸ        = read(res_iis["σʸ"]);
+    σʸ        = permutedims(read(res_iis["σʸ"]));
     distr_par = read(res_iis["distr_par"]);
     nDraws    = read(res_iis["nDraws"]);
     burnin    = read(res_iis["burnin"]);
