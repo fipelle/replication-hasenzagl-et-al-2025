@@ -75,10 +75,10 @@ Alfred settings
 2. start_sample and end_sample: first and last observations of interest.
 ------------------------------------------------------------------------------------------------------------------------
 =#
-iis_release = Dates.Date("31-08-2020", "dd-mm-yyyy");
+iis_release = Dates.Date("30-09-2020", "dd-mm-yyyy");
 oos_start_date = Dates.Date("01-01-2005", "dd-mm-yyyy");
 start_sample = Dates.Date("01-01-1985", "dd-mm-yyyy");
-end_sample = Dates.Date("31-08-2020", "dd-mm-yyyy");
+end_sample = Dates.Date("30-09-2020", "dd-mm-yyyy");
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Residual settings
