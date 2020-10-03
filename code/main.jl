@@ -199,7 +199,7 @@ elseif run_type == 2
     end
 
     # Remove the trailing h missing observations in data and the standardisation
-    data = data[1:end-h, :] .* σʸ;
+    data = data .* σʸ;
 
     # Save res in jld format
     save("./results/res$(res_name).jld", Dict("data_cond" => data, "distr_cond_α" => distr_cond_α, "distr_cond_fcst" => distr_cond_fcst));
