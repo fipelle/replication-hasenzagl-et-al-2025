@@ -252,28 +252,28 @@ elseif run_type == 3
         rw_forecasts      = Array{Float64}(undef, h, n, n_vintages_id_year);
         outturn           = Array{Float64}(undef, h, n, n_vintages_id_year);
         parameters        = Array{Float64}(undef, size_θ, nDraws);               # full chain incl. burnin period
-        states            = Array{Float64}(undef, k, m+h, n_distribution);
+        states            = Array{Float64}(undef, k, m, n_distribution);
 
         # Output gap and potential output
-        output_gap  = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
-        potential_output = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
+        output_gap  = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
+        potential_output = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
 
         # BC, EP and T_INFL
-        BC_clean = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
-        EP_clean = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
-        BC       = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
-        EP       = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
-        T_INFL   = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
+        BC_clean = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
+        EP_clean = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
+        BC       = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
+        EP       = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
+        T_INFL   = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
 
         # Initialise to NaNs
-        states      .= NaN;
-        output_gap  .= NaN;
+        states           .= NaN;
+        output_gap       .= NaN;
         potential_output .= NaN;
-        BC_clean    .= NaN;
-        EP_clean    .= NaN;
-        BC          .= NaN;
-        EP          .= NaN;
-        T_INFL      .= NaN;
+        BC_clean         .= NaN;
+        EP_clean         .= NaN;
+        BC               .= NaN;
+        EP               .= NaN;
+        T_INFL           .= NaN;
 
         # Run parallel_oos!
         parallel_oos!(id_year, nM, nQ, h, data, data_order, MNEMONIC, estim, ind_restr_states, nDraws, burnin, data_vintages,
