@@ -75,16 +75,16 @@ function load_data(nyears, model_folder, is_baseline)
         outturn[:,:,start_ind_i:end_ind_i]         = raw_results["outturn"];
 
         # Store data from current chunk (output states)
-        output_gap[:,start_ind_i:end_ind_i]       = dropdims_median(raw_results["output_gap"]);
-        potential_output[:,start_ind_i:end_ind_i] = dropdims_median(raw_results["potential_output"]);
-        monthly_gdp[:,start_ind_i:end_ind_i]      = dropdims_median(raw_results["output_gap"] .+ raw_results["potential_output"]);
+        output_gap[:,start_ind_i:end_ind_i]       = dropdims_median(raw_results["output_gap"])[1:T, :];
+        potential_output[:,start_ind_i:end_ind_i] = dropdims_median(raw_results["potential_output"])[1:T, :];
+        monthly_gdp[:,start_ind_i:end_ind_i]      = dropdims_median(raw_results["output_gap"] .+ raw_results["potential_output"])[1:T, :];
 
         # Store data from current chunk (remaining states)
-        BC_clean[:,start_ind_i:end_ind_i] = dropdims_median(raw_results["BC_clean"]);
-        EP_clean[:,start_ind_i:end_ind_i] = dropdims_median(raw_results["EP_clean"]);
-        BC[:,start_ind_i:end_ind_i]       = dropdims_median(raw_results["BC"]);
-        EP[:,start_ind_i:end_ind_i]       = dropdims_median(raw_results["EP"]);
-        T_INFL[:,start_ind_i:end_ind_i]   = dropdims_median(raw_results["T_INFL"]);
+        BC_clean[:,start_ind_i:end_ind_i] = dropdims_median(raw_results["BC_clean"])[1:T, :];
+        EP_clean[:,start_ind_i:end_ind_i] = dropdims_median(raw_results["EP_clean"])[1:T, :];
+        BC[:,start_ind_i:end_ind_i]       = dropdims_median(raw_results["BC"])[1:T, :];
+        EP[:,start_ind_i:end_ind_i]       = dropdims_median(raw_results["EP"])[1:T, :];
+        T_INFL[:,start_ind_i:end_ind_i]   = dropdims_median(raw_results["T_INFL"])[1:T, :];
     end
 
     # Create the vintages
