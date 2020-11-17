@@ -77,7 +77,7 @@ function load_data(nyears, model_folder, is_baseline)
         # Store data from current chunk (output states)
         output_gap[:,start_ind_i:end_ind_i]       = dropdims_median(raw_results["output_gap"])[1:T, :];
         potential_output[:,start_ind_i:end_ind_i] = dropdims_median(raw_results["potential_output"])[1:T, :];
-        monthly_gdp[:,start_ind_i:end_ind_i]      = dropdims_median(raw_results["output_gap"] .+ raw_results["potential_output"])[1:T, :];
+        monthly_gdp[:,start_ind_i:end_ind_i]      = dropdims_median(raw_results["potential_output"] .* (raw_results["output_gap"]/100 .+ 1))[1:T, :];
 
         # Store data from current chunk (remaining states)
         BC_clean[:,start_ind_i:end_ind_i] = dropdims_median(raw_results["BC_clean"])[1:T, :];
@@ -115,7 +115,7 @@ function load_data(nyears, model_folder, is_baseline)
     date = sort(unique(chunk0["df_vintages"][!, :date]));
 
     return point_forecasts, rw_forecasts, outturn, data_vintages, date, h, n, chunk0,
-           monthly_gdp, output_gap, BC_clean, EP_clean, BC, EP, T_INFL;
+           monthly_gdp, output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL;
 end
 
 """
