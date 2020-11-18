@@ -99,19 +99,22 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
                 if sum(isnan.(output_gap[:, v])) != T
 
                     # End of the in-sample period
-                    end_iis = findall(isnan.(output_gap[:, v]))[1]-h-1;
+                    vth_nans = findall(isnan.(output_gap[:, v]));
+                    if length(vth_nans) > 0
+                        end_iis  = vth_nans[1]-h-1;
 
-                    # Replace forecast period with nans (output states)
-                    output_gap[end_iis:end_iis+h, v]       .= NaN;
-                    potential_output[end_iis:end_iis+h, v] .= NaN;
-                    monthly_gdp[end_iis:end_iis+h, v]      .= NaN;
+                        # Replace forecast period with nans (output states)
+                        output_gap[end_iis:end_iis+h, v]       .= NaN;
+                        potential_output[end_iis:end_iis+h, v] .= NaN;
+                        monthly_gdp[end_iis:end_iis+h, v]      .= NaN;
 
-                    # Replace forecast period with nans (remaining states)
-                    BC_clean[end_iis:end_iis+h, v] .= NaN;
-                    EP_clean[end_iis:end_iis+h, v] .= NaN;
-                    BC[end_iis:end_iis+h, v]       .= NaN;
-                    EP[end_iis:end_iis+h, v]       .= NaN;
-                    T_INFL[end_iis:end_iis+h, v]   .= NaN;
+                        # Replace forecast period with nans (remaining states)
+                        BC_clean[end_iis:end_iis+h, v] .= NaN;
+                        EP_clean[end_iis:end_iis+h, v] .= NaN;
+                        BC[end_iis:end_iis+h, v]       .= NaN;
+                        EP[end_iis:end_iis+h, v]       .= NaN;
+                        T_INFL[end_iis:end_iis+h, v]   .= NaN;
+                    end
                 end
             end
         end
