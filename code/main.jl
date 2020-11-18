@@ -8,7 +8,6 @@ n_distribution = nDraws-burnin;
 
 # Load data
 
-
 # ---------------------------------------------------------------------------------------------------------------------
 # The following block of code is deprecated and it was used to load in-sample data from Excel files.
 # ---------------------------------------------------------------------------------------------------------------------
@@ -68,32 +67,41 @@ else
 end
 
 # Last vintage
-if run_type == 1
+if run_type == 1 || run_type == 2
 
     # Find iis_release index
     diff_days = abs.(unique_releases .- iis_release);
     ind_iis_release = findall(diff_days .== minimum(diff_days))[1];
 
     # Select vintage and remove last h missings
-    @info("Selected vintage released on the $(unique_releases[ind_iis_release]) for in-sample estimation.");
+    if run_type == 1
+        @info("Selected vintage released on the $(unique_releases[ind_iis_release]) for in-sample estimation.");
+    else
+        @info("Selected vintage released on the $(unique_releases[ind_iis_release]) for conditional forecast estimation.");
+    end
+
     data = data_vintages[ind_iis_release][1:end-h, :];
 
     # Generate corresponding vector of reference dates
     date = Dates.lastdayofmonth.(collect(range(start_sample,length=size(data,1),step=Dates.Month(1))));
 
-else
+elseif run_type == 3
     data = data_vintages[end];
+
+else
+    error("Wrong run_type!");
 end
 
 # Dimensions
 m, n = size(data);
 
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Execution: run_type == 1
-# - Single iteration: it executes the code using the most updated datapoints
-# ----------------------------------------------------------------------------------------------------------------------
-
+#=
+------------------------------------------------------------------------------------------------------------------------
+Run type == 1
+------------------------------------------------------------------------------------------------------------------------
+In-sample estimation: it executes the code using a single selected data vintage.
+------------------------------------------------------------------------------------------------------------------------
+=#
 if run_type == 1
 
     data, MNEMONIC, quarterly_position, σʸ = standardize_data(data, nM, nQ, h, data_order, MNEMONIC);
@@ -109,7 +117,7 @@ if run_type == 1
     distr_α, distr_fcst, chain_θ_unb, chain_θ_bound, par, par_ind, par_size, distr_par =
         ssm_settings(data, h, nDraws, burnin, σʸ, quarterly_position, estim, ind_restr_states);
 
-    # Transform variables to make them comparable with run_type==2
+    # Remove the trailing h missing observations in data and the standardisation
     data = data[1:end-h, :].*σʸ';
 
     # Save res in jld format
@@ -119,12 +127,91 @@ if run_type == 1
         "MNEMONIC" => MNEMONIC, "par_ind" => par_ind, "par_size" => par_size, "distr_par" => distr_par, "σʸ" => σʸ));
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# Execution: run_type == 2
-# -  Out-of-sample
-# ----------------------------------------------------------------------------------------------------------------------
-
+#=
+------------------------------------------------------------------------------------------------------------------------
+Run type == 2
+------------------------------------------------------------------------------------------------------------------------
+Conditional forecast: it executes a series of conditional forecast on the basis of the in-sample coefficients,
+and using a single selected data vintage. This option can be used only after having previously run the in-sample
+estimation (run_type = 1).
+------------------------------------------------------------------------------------------------------------------------
+=#
 elseif run_type == 2
+
+    # Load parameters from in-sample output
+    res_iis   = JLD.jldopen("$(pwd())/results/res$(res_iis_name).jld");
+    σʸ        = permutedims(read(res_iis["σʸ"]));
+    distr_par = read(res_iis["distr_par"]);
+    nDraws    = read(res_iis["nDraws"]);
+    burnin    = read(res_iis["burnin"]);
+    @info("Loaded in-sample output. Replaced nDraws and burnin with values in res$(res_iis_name).jld");
+
+    # Standardize data with in-sample σʸ
+    data, MNEMONIC, quarterly_position, _ = standardize_data(data, nM, nQ, h, data_order, MNEMONIC, σʸ);
+
+    # Conditioning path
+    if isempty(cond)
+        data = [data; missing .* ones(h, n)];
+
+    else
+        cond_keys   = collect(keys(cond));
+        cond_values = collect(values(cond));
+        cond_pos    = vcat([findall(MNEMONIC .== j) for j in cond_keys]...);
+        cond_h      = length.(cond_values);
+
+        # Add h trailing missings if necessary
+        data = [data; missing .* ones(maximum([h; cond_h]), n)];
+        for j=1:length(cond_pos)
+            data[m+1:m+cond_h[j], cond_pos[j]] = cond_values[j] ./ σʸ[cond_pos[j]];
+        end
+    end
+
+    # SPF is unrestricted
+    quarterly_position[MNEMONIC.=="GDP SPF"] .= 0.0;
+    quarterly_position[MNEMONIC.=="INFL SPF"] .= 0.0;
+
+    @info("Data order: $MNEMONIC")
+
+    # --------------------------------------------
+    # Compute conditional forecast output
+    # --------------------------------------------
+
+    # Initialise output
+    # Note: at this stage the data is transposed wrt JuSSM_run.jl -> m, n = size(data) is correct.
+    k               = size(distr_par[1].T)[1];
+    m, n            = size(data);
+    distr_cond_α    = zeros(k, m, nDraws-burnin);
+    distr_cond_fcst = zeros(m, n, nDraws-burnin);
+
+    # Loop over variables and draws
+    for draw=1:nDraws-burnin
+
+        # Draw
+        par_draw   = distr_par[draw];
+        par_draw.y = data';
+        α_draw, _  = kalman_diffuse!(par_draw, 0, 1, 1);
+
+        # Store states
+        distr_cond_α[:, :, draw] = α_draw;
+
+        # Store conditional forecasts (the predictions are for standardised data, as for the in-sample estimation)
+        distr_cond_fcst[:, :, draw] = (par_draw.Z*α_draw)';
+    end
+
+    # Remove the trailing h missing observations in data and the standardisation
+    data = data .* σʸ;
+
+    # Save res in jld format
+    save("./results/res$(res_name).jld", Dict("data_cond" => data, "distr_cond_α" => distr_cond_α, "distr_cond_fcst" => distr_cond_fcst));
+
+#=
+------------------------------------------------------------------------------------------------------------------------
+Run type == 3
+------------------------------------------------------------------------------------------------------------------------
+Out-of-sample (real-time or pseudo, dependings on the settings in the Excel input).
+------------------------------------------------------------------------------------------------------------------------
+=#
+elseif run_type == 3
 
     # --------------------------------------------
     # Initialise
@@ -165,42 +252,40 @@ elseif run_type == 2
         rw_forecasts      = Array{Float64}(undef, h, n, n_vintages_id_year);
         outturn           = Array{Float64}(undef, h, n, n_vintages_id_year);
         parameters        = Array{Float64}(undef, size_θ, nDraws);               # full chain incl. burnin period
-        states            = Array{Float64}(undef, k, m+h, n_distribution);
+        states            = Array{Float64}(undef, k, m, n_distribution);
 
-        # Monthly GDP and ouput gap
-        monthly_gdp = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
-        output_gap  = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
-        potential_output = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
+        # Output gap and potential output
+        output_gap  = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
+        potential_output = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
 
         # BC, EP and T_INFL
-        BC_clean = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
-        EP_clean = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
-        BC       = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
-        EP       = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
-        T_INFL   = Array{Float64}(undef, m+h, n_distribution, n_vintages_id_year);
+        BC_clean = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
+        EP_clean = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
+        BC       = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
+        EP       = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
+        T_INFL   = Array{Float64}(undef, m, n_distribution, n_vintages_id_year);
 
         # Initialise to NaNs
-        states      .= NaN;
-        monthly_gdp .= NaN;
-        output_gap  .= NaN;
+        states           .= NaN;
+        output_gap       .= NaN;
         potential_output .= NaN;
-        BC_clean    .= NaN;
-        EP_clean    .= NaN;
-        BC          .= NaN;
-        EP          .= NaN;
-        T_INFL      .= NaN;
+        BC_clean         .= NaN;
+        EP_clean         .= NaN;
+        BC               .= NaN;
+        EP               .= NaN;
+        T_INFL           .= NaN;
 
         # Run parallel_oos!
         parallel_oos!(id_year, nM, nQ, h, data, data_order, MNEMONIC, estim, ind_restr_states, nDraws, burnin, data_vintages,
                       data_vintages_year, unique_years, releases_per_year, oos_position, density_forecasts,
                       point_forecasts, rw_forecasts, outturn, parameters, states,
-                      monthly_gdp, output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL);
+                      output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL);
 
         # Save id_year-th chunk
         save("./results/res$(res_name)_chunk$(id_year).jld", Dict("id_year" => id_year,
              "density_forecasts" => density_forecasts,  "point_forecasts" => point_forecasts,
              "rw_forecasts" => rw_forecasts, "outturn" => outturn, "parameters" => parameters, "states" => states,
-             "monthly_gdp" => monthly_gdp, "output_gap" => output_gap, "potential_output" => potential_output,
+             "output_gap" => output_gap, "potential_output" => potential_output,
              "BC_clean" => BC_clean, "EP_clean" => EP_clean, "BC" => BC, "EP" => EP, "T_INFL" => T_INFL));
     end
 

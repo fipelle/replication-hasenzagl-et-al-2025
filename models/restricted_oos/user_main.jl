@@ -9,7 +9,7 @@ using Distributed;
 @everywhere using LinearAlgebra;
 @everywhere using Random;
 @everywhere using Statistics;
-@everywhere using FileIO, CSV, XLSX;
+@everywhere using FileIO, CSV, JLD, XLSX;
 @everywhere using DataFrames;
 @everywhere using Logging;
 @everywhere using FredData;
@@ -32,7 +32,7 @@ local_data_path = "./data/US_local.xlsx";
 fred_data_path = "./data/US_fred.xlsx";
 
 # Forecast horizon
-h = 36; # forecast horizon [it is used when run_type is 1 or 2]
+h = 36;
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -49,35 +49,43 @@ burnin = 5000;
 ------------------------------------------------------------------------------------------------------------------------
 Run type
 ------------------------------------------------------------------------------------------------------------------------
-1. Single iteration: it executes the code using the most updated datapoints
-2. Out-of-sample (real-time or pseudo, dependings on the settings in the Excel input)
+1. In-sample estimation: it executes the code using a single selected data vintage.
+2. Conditional forecast: it executes a series of conditional forecast on the basis of the in-sample coefficients,
+   and using a single selected data vintage. This option can be used only after having previously run the in-sample
+   estimation (run_type = 1).
+3. Out-of-sample (real-time or pseudo, dependings on the settings in the Excel input).
 ------------------------------------------------------------------------------------------------------------------------
 =#
 
-run_type = 2;
+run_type = 3;
 res_name = "";
+res_iis_name = ""; # used only in run_type == 2 to load the in-sample coefficients
 
 #=
 ------------------------------------------------------------------------------------------------------------------------
 Alfred settings
 ------------------------------------------------------------------------------------------------------------------------
 
-1. iis_release and oos_start_date: "oos_start_date" is the date from which the code starts downloading
-   the real-time vintages. In the in-sample estimation "oos_start_date" is used (for simplicity) to download
-   a range of vintages from which only the data released closer to "iis_release" is selected and used.
+1. iis_release and oos_start_date: "oos_start_date" is the date from which the code starts downloading the real-time
+   vintages. In the in-sample estimation and when computing conditional forecasts, "oos_start_date" is used (for
+   simplicity) to download a range of vintages from which only the data released closer to "iis_release" is selected
+   and used. In other words, "iis_release" represents the date closer to the release of the vintage selected for
+   in-sample estimation and to compute conditional forecasts. It is not used for the out-of-sample estimation.
 
 2. start_sample and end_sample: first and last observations of interest.
-
-Note: "iis_release" is used for the in-sample estimation (run_type==1) only.
 ------------------------------------------------------------------------------------------------------------------------
 =#
 iis_release = "";
 oos_start_date = Dates.Date("01-01-2005", "dd-mm-yyyy");
 start_sample = Dates.Date("01-01-1985", "dd-mm-yyyy");
-end_sample = Dates.Date("31-08-2020", "dd-mm-yyyy");
+end_sample = Dates.Date("30-09-2020", "dd-mm-yyyy");
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Residual settings
+# ----------------------------------------------------------------------------------------------------------------------
 
 #=
-Out-of-sample: position of the states and variables of interest
+Out-of-sample: position of the states and variables of interest [used only when run_type == 3]
 - BC
 - EP
 - T_INFL
@@ -86,6 +94,9 @@ Out-of-sample: position of the states and variables of interest
 - INFL
 =#
 oos_position = output_position(1, 5, 7, 10, 2, 7);
+
+# Conditional forecast: conditioning path [used only when run_type == 2]
+cond = Dict();
 
 #=
 Data order is:
