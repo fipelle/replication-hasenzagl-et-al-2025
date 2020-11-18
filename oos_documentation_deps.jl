@@ -21,11 +21,11 @@ Take median and remove unit dimension.
 dropdims_median(X::Array{Float64,3}) = dropdims(median(X, dims=2), dims=2);
 
 """
-    load_data(nyears, model_folder, is_baseline; remove_forecast_path=true)
+    load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=true)
 
 Load out-of-sample reconstruction results from the output chunks.
 """
-function load_data(nyears, model_folder, is_baseline; remove_forecast_path=true)
+function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=true)
 
     # Load chunk0
     chunk0 = load("$(model_folder)/results/res_chunk0.jld");
