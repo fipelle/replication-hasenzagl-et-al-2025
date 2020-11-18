@@ -24,7 +24,7 @@ point_forecasts, rw_forecasts, outturn, data_vintages, date, h, n, chunk0,
        monthly_gdp, output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL = load_oos_recon(16, model_folder, is_baseline);
 
 # Generate vector of unique releases
-unique_releases = sort(unique(chunk0["df_vintages"][!, :vintage_id]));
+unique_releases = sort(unique(read(chunk0["df_vintages"])[!, :vintage_id]));
 
 # Compute the SE arrays
 TC_SE = se_hz(data_vintages, point_forecasts);
@@ -36,7 +36,7 @@ RW_SE = se_hz(data_vintages, rw_forecasts);
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Initialise chart
-titles = chunk0["MNEMONIC"];
+titles = read(chunk0["MNEMONIC"]);
 splots = Array{Any,1}(undef, length(titles));
 gr()
 
