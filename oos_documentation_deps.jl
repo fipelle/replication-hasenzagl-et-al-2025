@@ -81,28 +81,32 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
             end_ind_i = releases_to_keep;
         end
 
+        # i-th ranges
+        ith_vintage_id_range = start_ind_i:end_ind_i;
+        ith_input_range = 1:end_ind_i-start_ind_i+1;
+
         # Store data from current chunk (forecasts)
-        point_forecasts[:, :, start_ind_i:end_ind_i] = read(raw_results["point_forecasts"]);
-        rw_forecasts[:, :, start_ind_i:end_ind_i]    = read(raw_results["rw_forecasts"]);
-        outturn[:, :, start_ind_i:end_ind_i]         = read(raw_results["outturn"]);
+        point_forecasts[:, :, ith_vintage_id_range] = read(raw_results["point_forecasts"])[:, :, ith_input_range];
+        rw_forecasts[:, :, ith_vintage_id_range]    = read(raw_results["rw_forecasts"])[:, :, ith_input_range];
+        outturn[:, :, ith_vintage_id_range]         = read(raw_results["outturn"])[:, :, ith_input_range];
 
         # Store data from current chunk (output states)
-        output_gap[:, start_ind_i:end_ind_i]       = dropdims_median(read(raw_results["output_gap"]))[1:T, :];
-        potential_output[:, start_ind_i:end_ind_i] = dropdims_median(read(raw_results["potential_output"]))[1:T, :];
-        monthly_gdp[:, start_ind_i:end_ind_i]      = dropdims_median(read(raw_results["potential_output"]) .* (read(raw_results["output_gap"])/100 .+ 1))[1:T, :];
+        output_gap[:, ith_vintage_id_range]       = dropdims_median(read(raw_results["output_gap"]))[1:T, ith_input_range];
+        potential_output[:, ith_vintage_id_range] = dropdims_median(read(raw_results["potential_output"]))[1:T, ith_input_range];
+        monthly_gdp[:, ith_vintage_id_range]      = dropdims_median(read(raw_results["potential_output"]) .* (read(raw_results["output_gap"])/100 .+ 1))[1:T, ith_input_range];
 
         # Store data from current chunk (remaining states)
-        BC_clean[:, start_ind_i:end_ind_i] = dropdims_median(read(raw_results["BC_clean"]))[1:T, :];
-        EP_clean[:, start_ind_i:end_ind_i] = dropdims_median(read(raw_results["EP_clean"]))[1:T, :];
-        BC[:, start_ind_i:end_ind_i]       = dropdims_median(read(raw_results["BC"]))[1:T, :];
-        EP[:, start_ind_i:end_ind_i]       = dropdims_median(read(raw_results["EP"]))[1:T, :];
-        T_INFL[:, start_ind_i:end_ind_i]   = dropdims_median(read(raw_results["T_INFL"]))[1:T, :];
+        BC_clean[:, ith_vintage_id_range] = dropdims_median(read(raw_results["BC_clean"]))[1:T, ith_input_range];
+        EP_clean[:, ith_vintage_id_range] = dropdims_median(read(raw_results["EP_clean"]))[1:T, ith_input_range];
+        BC[:, ith_vintage_id_range]       = dropdims_median(read(raw_results["BC"]))[1:T, ith_input_range];
+        EP[:, ith_vintage_id_range]       = dropdims_median(read(raw_results["EP"]))[1:T, ith_input_range];
+        T_INFL[:, ith_vintage_id_range]   = dropdims_median(read(raw_results["T_INFL"]))[1:T, ith_input_range];
 
         # Optional routine
         if remove_forecast_path
 
             # Loop over the vintages
-            for v=start_ind_i:end_ind_i
+            for v=ith_vintage_id_range
 
                 # If not all nans
                 if sum(isnan.(output_gap[:, v])) != T
