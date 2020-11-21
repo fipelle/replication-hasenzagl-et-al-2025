@@ -2,13 +2,22 @@
 # Manual user input
 # ----------------------------------------------------------------------------------------------------------------------
 
+# Number of (subsequent) oos years to evaluate
+nyears = 16;
+
 # File path
-model_folder = "./models/baseline_oos/";
+model_folder = "./models/baseline_oos";
 
 # true for baseline, false for restricted
 is_baseline = true;
 
-# filename
+# Remove forecast path in the states
+remove_forecast_path = true;
+
+# Number of vintages to exclude from the output
+vintages_to_exclude = 0;
+
+# File name
 filename = "complete";
 
 
@@ -21,10 +30,10 @@ include("./oos_documentation_deps.jl")
 
 # Load out-of-sample reconstruction output
 point_forecasts, rw_forecasts, outturn, data_vintages, date, h, n, chunk0,
-       monthly_gdp, output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL = load_oos_recon(16, model_folder, is_baseline);
+       monthly_gdp, output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL = load_oos_recon(nyears, model_folder, is_baseline, remove_forecast_path=remove_forecast_path, vintages_to_exclude=vintages_to_exclude);
 
 # Generate vector of unique releases
-unique_releases = sort(unique(read(chunk0["df_vintages"])[!, :vintage_id]));
+unique_releases = sort(unique(read(chunk0["df_vintages"])[!, :vintage_id]))[1:end-vintages_to_exclude];
 
 # Compute the SE arrays
 TC_SE = se_hz(data_vintages, point_forecasts);

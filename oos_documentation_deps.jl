@@ -21,11 +21,11 @@ Take median and remove unit dimension.
 dropdims_median(X::Array{Float64,3}) = dropdims(median(X, dims=2), dims=2);
 
 """
-    load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=true)
+    load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=true, vintages_to_exclude=0)
 
 Load out-of-sample reconstruction results from the output chunks.
 """
-function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=true)
+function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=true, vintages_to_exclude=0)
 
     # Load chunk0
     chunk0 = jldopen("$(model_folder)/results/res_chunk0.jld");
@@ -38,22 +38,25 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
     h    = size(read(JLD.jldopen("$(model_folder)/results/res_chunk1.jld")["point_forecasts"]))[1];
     T, n = size(read(chunk0["data"]));
 
+    # Number of releases to keep
+    releases_to_keep = sum(releases_per_year) - vintages_to_exclude;
+
     # Initialise forecasts and outturn
-    point_forecasts = Array{Float64}(undef, h, n, sum(releases_per_year));
-    rw_forecasts    = Array{Float64}(undef, h, n, sum(releases_per_year));
-    outturn         = Array{Float64}(undef, h, n, sum(releases_per_year));
+    point_forecasts = Array{Float64}(undef, h, n, releases_to_keep);
+    rw_forecasts    = Array{Float64}(undef, h, n, releases_to_keep);
+    outturn         = Array{Float64}(undef, h, n, releases_to_keep);
 
     # Initialise output states
-    output_gap       = Array{Float64}(undef, T, sum(releases_per_year));
-    potential_output = Array{Float64}(undef, T, sum(releases_per_year));
-    monthly_gdp      = Array{Float64}(undef, T, sum(releases_per_year));
+    output_gap       = Array{Float64}(undef, T, releases_to_keep);
+    potential_output = Array{Float64}(undef, T, releases_to_keep);
+    monthly_gdp      = Array{Float64}(undef, T, releases_to_keep);
 
     # Initialise remaining states
-    BC_clean = Array{Float64}(undef, T, sum(releases_per_year));
-    EP_clean = Array{Float64}(undef, T, sum(releases_per_year));
-    BC       = Array{Float64}(undef, T, sum(releases_per_year));
-    EP       = Array{Float64}(undef, T, sum(releases_per_year));
-    T_INFL   = Array{Float64}(undef, T, sum(releases_per_year));
+    BC_clean = Array{Float64}(undef, T, releases_to_keep);
+    EP_clean = Array{Float64}(undef, T, releases_to_keep);
+    BC       = Array{Float64}(undef, T, releases_to_keep);
+    EP       = Array{Float64}(undef, T, releases_to_keep);
+    T_INFL   = Array{Float64}(undef, T, releases_to_keep);
 
     # Loop over the chunks
     for i=1:nyears
@@ -71,6 +74,12 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
             start_ind_i = 1 + cumsum(releases_per_year[1:i-1])[end];
         end
         end_ind_i = cumsum(releases_per_year[1:i])[end];
+
+        if start_ind_i > releases_to_keep
+            break;
+        elseif end_ind_i > releases_to_keep
+            end_ind_i = releases_to_keep;
+        end
 
         # Store data from current chunk (forecasts)
         point_forecasts[:, :, start_ind_i:end_ind_i] = read(raw_results["point_forecasts"]);
@@ -123,10 +132,10 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
     # Create the vintages
     data_vintages     = zeros(size(point_forecasts));
     raw_data_vintages = read(chunk0["data_vintages"]);
-    last_data_vintage = raw_data_vintages[end];
+    last_data_vintage = raw_data_vintages[releases_to_keep];
 
     # Loop over the vintages
-    for v=1:size(data_vintages,3)
+    for v=1:releases_to_keep
 
         # Loop over the variables
         for i=1:n
@@ -145,7 +154,7 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
         end
     end
 
-    date = sort(unique(read(chunk0["df_vintages"])[!, :date]));
+    date = sort(unique(read(chunk0["df_vintages"])[!, :date]))[1:T];
 
     return point_forecasts, rw_forecasts, outturn, data_vintages, date, h, n, chunk0,
            monthly_gdp, output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL;
