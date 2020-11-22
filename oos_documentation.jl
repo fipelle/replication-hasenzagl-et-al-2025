@@ -26,7 +26,7 @@ filename = "complete";
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Load deps
-include("./oos_documentation_deps.jl")
+include("./oos_documentation_deps.jl");
 
 # Load out-of-sample reconstruction output
 point_forecasts, rw_forecasts, outturn, data_vintages, date, h, n, chunk0,
@@ -43,6 +43,8 @@ RW_SE = se_hz(data_vintages, rw_forecasts);
 # ----------------------------------------------------------------------------------------------------------------------
 # MSFE chart and csv output
 # ----------------------------------------------------------------------------------------------------------------------
+
+@info("Creating charts.");
 
 # Initialise chart
 titles = read(chunk0["MNEMONIC"]);
@@ -95,7 +97,7 @@ for hz=1:size(output_gap,1)-length(date)
         last_month += 1;
     end
 
-    push!(date_ext, Date("01/$(last_month)/$(last_year)", "dd/mm/yyyy"))
+    push!(date_ext, Date("01/$(last_month)/$(last_year)", "dd/mm/yyyy"));
 end
 
 p2 = plot(date_ext, output_gap, title="Output gap", legend=false, framestyle=:box, titlefont=font(10), xaxis=(font(8)), yaxis=("Percent", font(8)), size=(600,250));
@@ -149,7 +151,7 @@ for hz=1:h
     if length(hzth_nans) > 0
         last_obs_hz  = hzth_nans[1]-1;
     else
-        last_obs_hz = size(y_hz, 2);
+        last_obs_hz = size(y_hz, 1);
     end
 
     # Data (excluding nans)
@@ -191,7 +193,7 @@ for hz=3:3:h
     if length(hzth_nans) > 0
         last_obs_hz  = hzth_nans[1]-1;
     else
-        last_obs_hz = size(y_hz, 2);
+        last_obs_hz = size(y_hz, 1);
     end
 
     # Data (excluding nans)
@@ -207,3 +209,13 @@ for hz=3:3:h
     end
     Plots.savefig(p_hz, "$(model_folder)/img/$(filename)_gdp_forecast_h$(Int64(hz/3)).pdf");
 end
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Save forecast summary to disk
+# ----------------------------------------------------------------------------------------------------------------------
+
+@info("Save forecast output summary to disk");
+save("$(model_folder)/results/forecast_output_summary.jld", Dict("point_forecasts" => point_forecasts, 
+     "rw_forecasts" => rw_forecasts, "outturn" => outturn, "date" => date, "unique_releases" => unique_releases, 
+     "h" => h, "titles" => titles));

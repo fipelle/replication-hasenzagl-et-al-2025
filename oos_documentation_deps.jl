@@ -145,7 +145,7 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
         for i=1:n
 
             # v-th vintage, i-th variable
-            raw_data_vintage_i_v = raw_data_vintages[v][:,data_order[i]]
+            raw_data_vintage_i_v = raw_data_vintages[v][:,data_order[i]];
             start_ind_i = maximum(findall(.~(ismissing.(raw_data_vintage_i_v))));
 
             # Raw_data
@@ -158,7 +158,9 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
         end
     end
 
-    date = sort(unique(read(chunk0["df_vintages"])[!, :date]))[1:T];
+    date = sort(unique(read(chunk0["df_vintages"])[!, :date]))[1:T-h];
+
+    @info("Loading complete");
 
     return point_forecasts, rw_forecasts, outturn, data_vintages, date, h, n, chunk0,
            monthly_gdp, output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL;
