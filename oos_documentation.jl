@@ -2,14 +2,23 @@
 # Manual user input
 # ----------------------------------------------------------------------------------------------------------------------
 
+# Number of (subsequent) oos years to evaluate
+nyears = 16;
+
 # File path
-model_folder = "./models/baseline_oos/";
+model_folder = "./models/baseline_oos";
 
 # true for baseline, false for restricted
 is_baseline = true;
 
-# filename
-filename = "complete";
+# Remove forecast path in the states
+remove_forecast_path = true;
+
+# Number of vintages to exclude from the output
+vintages_to_exclude = 0;
+
+# File name
+output_file_name = "baseline";
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -17,55 +26,29 @@ filename = "complete";
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Load deps
-include("./oos_documentation_deps.jl")
+include("./oos_documentation_deps.jl");
 
 # Load out-of-sample reconstruction output
 point_forecasts, rw_forecasts, outturn, data_vintages, date, h, n, chunk0,
-       monthly_gdp, output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL = load_oos_recon(16, model_folder, is_baseline);
+       monthly_gdp, output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL = load_oos_recon(nyears, model_folder, is_baseline, remove_forecast_path=remove_forecast_path, vintages_to_exclude=vintages_to_exclude);
 
 # Generate vector of unique releases
-unique_releases = sort(unique(read(chunk0["df_vintages"])[!, :vintage_id]));
+unique_releases = sort(unique(read(chunk0["df_vintages"])[!, :vintage_id]))[1:end-vintages_to_exclude];
+
+@info("Creating charts and csv output.");
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# MSFE csv output
+# ----------------------------------------------------------------------------------------------------------------------
 
 # Compute the SE arrays
 TC_SE = se_hz(data_vintages, point_forecasts);
 RW_SE = se_hz(data_vintages, rw_forecasts);
 
-
-# ----------------------------------------------------------------------------------------------------------------------
-# MSFE chart and csv output
-# ----------------------------------------------------------------------------------------------------------------------
-
-# Initialise chart
-titles = read(chunk0["MNEMONIC"]);
-splots = Array{Any,1}(undef, length(titles));
-gr()
-
-for i=1:length(titles)
-
-    ind_not_nan = .~isnan.(TC_SE[:,i]);
-    if sum(ind_not_nan) != length(ind_not_nan)
-        xaxis_name = "Forecast horizon (quarters)";
-        xaxis_label = 3:3:12;
-    else
-        xaxis_name = "Forecast horizon (months)";
-        xaxis_label = 3:3:36;
-    end
-
-    if i != length(titles)
-        splots[i] = plot(TC_SE[ind_not_nan,i], title=titles[i], label="TC model", legend=false, color="red", framestyle=:box, titlefont=font(10), xaxis=(xaxis_name, xaxis_label, font(8)), yaxis=("MSE", font(8)));
-        plot!(RW_SE[ind_not_nan,i], label="RW benchmark", legend=false, color="green");
-    else
-        splots[i] = plot(TC_SE[ind_not_nan,i], title=titles[i], label="TC model", legend=:bottomright, color="red", framestyle=:box, titlefont=font(10), xaxis=(xaxis_name, xaxis_label, font(8)), yaxis=("MSE", font(8)));
-        plot!(RW_SE[ind_not_nan,i], label="RW benchmark", legend=:bottomright, color="green");
-    end
-end
-
-p1 = plot(splots..., layout=(4,2), size=(1200,1000));
-Plots.savefig(p1, "$(model_folder)/img/$(filename)_rmsfe_plot.pdf");
-
 # Save to csv
-FileIO.save("$(model_folder)/results_csv/$(filename)_msfe_tc.csv", DataFrame(TC_SE));
-FileIO.save("$(model_folder)/results_csv/$(filename)_msfe_rw.csv", DataFrame(RW_SE));
+FileIO.save("$(model_folder)/results_csv/$(output_file_name)_msfe_tc.csv", DataFrame(TC_SE));
+FileIO.save("$(model_folder)/results_csv/$(output_file_name)_msfe_rw.csv", DataFrame(RW_SE));
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -86,35 +69,85 @@ for hz=1:size(output_gap,1)-length(date)
         last_month += 1;
     end
 
-    push!(date_ext, Date("01/$(last_month)/$(last_year)", "dd/mm/yyyy"))
+    push!(date_ext, Date("01/$(last_month)/$(last_year)", "dd/mm/yyyy"));
 end
 
-p2 = plot(date_ext, output_gap, title="Output gap", legend=false, framestyle=:box, titlefont=font(10), xaxis=(font(8)), yaxis=("Percent", font(8)), size=(600,250));
-Plots.savefig(p2, "$(model_folder)/img/$(filename)_output_gap.pdf");
+traces = Array{Any}(undef, size(output_gap, 2));
+
+for i=1:length(traces)
+    traces[i] = scatter(x=date_ext, y=output_gap[:,i], showlegend=false);
+end
+
+traces = vcat(traces...);
+
+layout = Layout(title="Monthly output gap", titlefont_size=16,
+                xaxis=attr(tickfont_size=10, showgrid=true, linecolor="black", mirror=true, nticks=10, tickangle=0, titlefont=attr(size=10)),
+                yaxis=attr(zeroline=true, tickfont_size=10, showgrid=true, linecolor="black", nticks=10, mirror=true, range=[-16, 6], titlefont=attr(size=10), title="Percent"));
+
+fig = plot(traces, layout);
+
+# Size
+fig.plot.layout["width"]  = 1000;
+fig.plot.layout["height"] = 400;
+
+# Margins
+fig.plot.layout["margin"][:b]  = 40;
+fig.plot.layout["margin"][:t]  = 40;
+fig.plot.layout["margin"][:r]  = 40;
+fig.plot.layout["margin"][:l]  = 40;
+
+fig.plot.layout["legend"] = attr(y=-0.1, x=0.415, font=attr(size=10), orientation="h");
+
+PlotlyBase.savefig(fig, "$(model_folder)/img/$(output_file_name)_output_gap.pdf", format="pdf");
 
 # Save to csv
 df_output_gap_data = [date_ext output_gap];
 df_output_gap_names = vcat(:ref_period, Symbol.(unique_releases));
 df_output_gap = DataFrame(df_output_gap_data);
 rename!(df_output_gap, df_output_gap_names);
-FileIO.save("$(model_folder)/results_csv/$(filename)_output_gap.csv", df_output_gap);
+FileIO.save("$(model_folder)/results_csv/$(output_file_name)_output_gap.csv", df_output_gap);
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Potential output (YoY%) chart and csv output
 # ----------------------------------------------------------------------------------------------------------------------
 
-potential_output_yoy = 100*(log.(potential_output[13:end,:])-log.(potential_output[1:end-12,:]));
+potential_output_yoy = 100*((potential_output[13:end,:] ./ potential_output[1:end-12,:]) .- 1);
 
-p3 = plot(date_ext[13:end], potential_output_yoy, title="Potential output (YoY, %)", legend=false, framestyle=:box, titlefont=font(10), xaxis=(font(8)), yaxis=("Percent", font(8)), size=(600,250));
-Plots.savefig(p3, "$(model_folder)/img/$(filename)_potential_output.pdf");
+traces = Array{Any}(undef, size(potential_output_yoy, 2));
+
+for i=1:length(traces)
+    traces[i] = scatter(x=date_ext[13:end], y=potential_output_yoy[:,i], showlegend=false);
+end
+
+traces = vcat(traces...);
+
+layout = Layout(title="Monthly potential output (YoY, %)", titlefont_size=16,
+                xaxis=attr(tickfont_size=10, showgrid=true, linecolor="black", mirror=true, nticks=10, tickangle=0, titlefont=attr(size=10)),
+                yaxis=attr(zeroline=false, tickfont_size=10, showgrid=true, linecolor="black", nticks=10, mirror=true, range=[-2, 6], titlefont=attr(size=10), title="Percent"));
+
+fig = plot(traces, layout);
+
+# Size
+fig.plot.layout["width"]  = 1000;
+fig.plot.layout["height"] = 400;
+
+# Margins
+fig.plot.layout["margin"][:b]  = 40;
+fig.plot.layout["margin"][:t]  = 40;
+fig.plot.layout["margin"][:r]  = 40;
+fig.plot.layout["margin"][:l]  = 40;
+
+fig.plot.layout["legend"] = attr(y=-0.1, x=0.415, font=attr(size=10), orientation="h");
+
+PlotlyBase.savefig(fig, "$(model_folder)/img/$(output_file_name)_potential_output_yoy.pdf", format="pdf");
 
 # Save to csv
 df_potential_output_data = [date_ext[13:end] potential_output_yoy];
 df_potential_output_names = vcat(:ref_period, Symbol.(unique_releases));
 df_potential_output = DataFrame(df_potential_output_data);
 rename!(df_potential_output, df_potential_output_names);
-FileIO.save("$(model_folder)/results_csv/$(filename)_potential_output_yoy.csv", df_potential_output);
+FileIO.save("$(model_folder)/results_csv/$(output_file_name)_potential_output_yoy.csv", df_potential_output);
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -123,11 +156,11 @@ FileIO.save("$(model_folder)/results_csv/$(filename)_potential_output_yoy.csv", 
 
 df_headline_fc = DataFrame([collect(1:36) point_forecasts[:, 6 + ~is_baseline, :]]);
 rename!(df_headline_fc, vcat(:fc_horizon, df_output_gap_names[2:end]));
-FileIO.save("$(model_folder)/results_csv/$(filename)_forecast_headline.csv", df_headline_fc);
+FileIO.save("$(model_folder)/results_csv/$(output_file_name)_forecast_headline.csv", df_headline_fc);
 
 df_headline_outturn = DataFrame([collect(1:36) outturn[:, 6 + ~is_baseline, :]]);
 rename!(df_headline_outturn, vcat(:fc_horizon, df_output_gap_names[2:end]));
-FileIO.save("$(model_folder)/results_csv/$(filename)_outturn_headline.csv", df_headline_outturn);
+FileIO.save("$(model_folder)/results_csv/$(output_file_name)_outturn_headline.csv", df_headline_outturn);
 
 for hz=1:h
 
@@ -140,22 +173,41 @@ for hz=1:h
     if length(hzth_nans) > 0
         last_obs_hz  = hzth_nans[1]-1;
     else
-        last_obs_hz = size(y_hz, 2);
+        last_obs_hz = size(y_hz, 1);
     end
 
     # Data (excluding nans)
     y_hz  = y_hz[1:last_obs_hz];
     fc_hz = fc_hz[1:last_obs_hz];
 
-    # Chart for the hz-th horizon
-    p_hz = plot(unique_releases[1:last_obs_hz], y_hz, color=:black, label="Headline inflation", framestyle=:box, titlefont=font(10), xaxis=(font(8)), yaxis=("Percent", font(8)), size=(600,250));
-    
     if hz == 1
-        plot!(unique_releases[1:last_obs_hz], fc_hz, color=:blue, label="$(hz) month ahead forecast");
+        label_name = "$hz month ahead forecast";
     else
-        plot!(unique_releases[1:last_obs_hz], fc_hz, color=:blue, label="$(hz) months ahead forecast");
+        label_name = "$hz months ahead forecast";
     end
-    Plots.savefig(p_hz, "$(model_folder)/img/$(filename)_headline_forecast_h$(hz).pdf");
+
+    trace1 = scatter(x=unique_releases[1:last_obs_hz], y=fc_hz, line=attr(width=1.4, color=c1), mode="lines", showlegend=true, name=label_name);
+    trace2 = scatter(x=unique_releases[1:last_obs_hz], y=y_hz, line=attr(width=1.4, color="black", dash="dot"), mode="lines", showlegend=true, name="Outturn");
+        
+    layout = Layout(title="Headline inflation (YoY, %)", titlefont_size=12,
+                    xaxis=attr(tickfont_size=10, showgrid=true, linecolor="black", mirror=true, nticks=10, tickangle=0, range=[unique_releases[1], unique_releases[last_obs_hz]], titlefont=attr(size=10), title="Releases"),
+                    yaxis=attr(zeroline=false, tickfont_size=10, showgrid=true, linecolor="black", nticks=10, mirror=true, titlefont=attr(size=10), title="Percent"));
+            
+    fig = plot([trace1, trace2], layout);
+
+    # Size
+    fig.plot.layout["width"]  = 1000;
+    fig.plot.layout["height"] = 400;
+
+    # Margins
+    fig.plot.layout["margin"][:b]  = 40;
+    fig.plot.layout["margin"][:t]  = 40;
+    fig.plot.layout["margin"][:r]  = 40;
+    fig.plot.layout["margin"][:l]  = 40;
+
+    fig.plot.layout["legend"] = attr(y=-0.2, x=0.36, font=attr(size=10), orientation="h")
+
+    PlotlyBase.savefig(fig, "$(model_folder)/img/$(output_file_name)_headline_forecast_h$(hz).pdf", format="pdf");
 end
 
 
@@ -165,11 +217,11 @@ end
 
 df_gdp_fc = DataFrame([collect(1:36) point_forecasts[:, 1 + ~is_baseline, :]]);
 rename!(df_gdp_fc, vcat(:fc_horizon, df_output_gap_names[2:end]));
-FileIO.save("$(model_folder)/results_csv/$(filename)_forecast_gdp.csv", df_gdp_fc);
+FileIO.save("$(model_folder)/results_csv/$(output_file_name)_forecast_gdp.csv", df_gdp_fc);
 
 df_gdp_outturn = DataFrame([collect(1:36) outturn[:, 1 + ~is_baseline, :]]);
 rename!(df_gdp_outturn, vcat(:fc_horizon, df_output_gap_names[2:end]));
-FileIO.save("$(model_folder)/results_csv/$(filename)_outturn_gdp.csv", df_gdp_outturn);
+FileIO.save("$(model_folder)/results_csv/$(output_file_name)_outturn_gdp.csv", df_gdp_outturn);
 
 for hz=3:3:h
 
@@ -182,19 +234,49 @@ for hz=3:3:h
     if length(hzth_nans) > 0
         last_obs_hz  = hzth_nans[1]-1;
     else
-        last_obs_hz = size(y_hz, 2);
+        last_obs_hz = size(y_hz, 1);
     end
 
     # Data (excluding nans)
     y_hz  = y_hz[1:last_obs_hz];
     fc_hz = fc_hz[1:last_obs_hz];
 
-    # Chart for the hz-th horizon
-    p_hz = plot(unique_releases[1:last_obs_hz], y_hz, color=:black, label="Real GDP", framestyle=:box, titlefont=font(10), xaxis=(font(8)), yaxis=("Bil. Chn. 2012\$", font(8)), size=(600,250), legend=:bottomright);
     if hz == 3
-        plot!(unique_releases[1:last_obs_hz], fc_hz, color=:blue, label="$(Int64(hz/3)) quarter ahead forecast");
+        label_name = "$(Int64(hz/3)) quarter ahead forecast";
     else
-        plot!(unique_releases[1:last_obs_hz], fc_hz, color=:blue, label="$(Int64(hz/3)) quarters ahead forecast");
+        label_name = "$(Int64(hz/3)) quarters ahead forecast";
     end
-    Plots.savefig(p_hz, "$(model_folder)/img/$(filename)_gdp_forecast_h$(Int64(hz/3)).pdf");
+
+    trace1 = scatter(x=unique_releases[1:last_obs_hz], y=fc_hz, line=attr(width=1.4, color=c1), mode="lines", showlegend=true, name=label_name);
+    trace2 = scatter(x=unique_releases[1:last_obs_hz], y=y_hz, line=attr(width=1.4, color="black", dash="dot"), mode="lines", showlegend=true, name="Outturn");
+        
+    layout = Layout(title="Real GDP", titlefont_size=12,
+                    xaxis=attr(tickfont_size=10, showgrid=true, linecolor="black", mirror=true, nticks=10, tickangle=0, range=[unique_releases[1], unique_releases[last_obs_hz]], titlefont=attr(size=10), title="Releases"),
+                    yaxis=attr(zeroline=false, tickfont_size=10, showgrid=true, linecolor="black", nticks=10, mirror=true, titlefont=attr(size=10), title="Bil. Chn. 2012\$"));
+            
+    fig = plot([trace1, trace2], layout);
+
+    # Size
+    fig.plot.layout["width"]  = 1000;
+    fig.plot.layout["height"] = 400;
+
+    # Margins
+    fig.plot.layout["margin"][:b]  = 40;
+    fig.plot.layout["margin"][:t]  = 40;
+    fig.plot.layout["margin"][:r]  = 40;
+    fig.plot.layout["margin"][:l]  = 40;
+
+    fig.plot.layout["legend"] = attr(y=-0.2, x=0.36, font=attr(size=10), orientation="h")
+
+    PlotlyBase.savefig(fig, "$(model_folder)/img/$(output_file_name)_gdp_forecast_h$(Int64(hz/3)).pdf", format="pdf");
 end
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Save forecast summary to disk
+# ----------------------------------------------------------------------------------------------------------------------
+
+@info("Save forecast output summary to disk");
+save("$(model_folder)/results/forecast_output_summary.jld", Dict("point_forecasts" => point_forecasts, 
+     "rw_forecasts" => rw_forecasts, "outturn" => outturn, "date" => date, "unique_releases" => unique_releases, 
+     "h" => h));

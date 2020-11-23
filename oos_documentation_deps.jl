@@ -5,8 +5,14 @@
 using JLD, FileIO;
 using DataFrames;
 using XLSX;
-using Plots, Measures;
+using Colors, PlotlyJS;
+using ORCA, PlotlyBase;
 using Dates, Statistics;
+
+# Colors
+c1 = "rgba(0, 48, 158, .75)";
+c2 = "rgba(255, 0, 0, .75)";
+c3 = "rgba(255, 190, 0, .75)";
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -21,11 +27,11 @@ Take median and remove unit dimension.
 dropdims_median(X::Array{Float64,3}) = dropdims(median(X, dims=2), dims=2);
 
 """
-    load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=true)
+    load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=true, vintages_to_exclude=0)
 
 Load out-of-sample reconstruction results from the output chunks.
 """
-function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=true)
+function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=true, vintages_to_exclude=0)
 
     # Load chunk0
     chunk0 = jldopen("$(model_folder)/results/res_chunk0.jld");
@@ -38,22 +44,25 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
     h    = size(read(JLD.jldopen("$(model_folder)/results/res_chunk1.jld")["point_forecasts"]))[1];
     T, n = size(read(chunk0["data"]));
 
+    # Number of releases to keep
+    releases_to_keep = sum(releases_per_year) - vintages_to_exclude;
+
     # Initialise forecasts and outturn
-    point_forecasts = Array{Float64}(undef, h, n, sum(releases_per_year));
-    rw_forecasts    = Array{Float64}(undef, h, n, sum(releases_per_year));
-    outturn         = Array{Float64}(undef, h, n, sum(releases_per_year));
+    point_forecasts = Array{Float64}(undef, h, n, releases_to_keep);
+    rw_forecasts    = Array{Float64}(undef, h, n, releases_to_keep);
+    outturn         = Array{Float64}(undef, h, n, releases_to_keep);
 
     # Initialise output states
-    output_gap       = Array{Float64}(undef, T, sum(releases_per_year));
-    potential_output = Array{Float64}(undef, T, sum(releases_per_year));
-    monthly_gdp      = Array{Float64}(undef, T, sum(releases_per_year));
+    output_gap       = Array{Float64}(undef, T, releases_to_keep);
+    potential_output = Array{Float64}(undef, T, releases_to_keep);
+    monthly_gdp      = Array{Float64}(undef, T, releases_to_keep);
 
     # Initialise remaining states
-    BC_clean = Array{Float64}(undef, T, sum(releases_per_year));
-    EP_clean = Array{Float64}(undef, T, sum(releases_per_year));
-    BC       = Array{Float64}(undef, T, sum(releases_per_year));
-    EP       = Array{Float64}(undef, T, sum(releases_per_year));
-    T_INFL   = Array{Float64}(undef, T, sum(releases_per_year));
+    BC_clean = Array{Float64}(undef, T, releases_to_keep);
+    EP_clean = Array{Float64}(undef, T, releases_to_keep);
+    BC       = Array{Float64}(undef, T, releases_to_keep);
+    EP       = Array{Float64}(undef, T, releases_to_keep);
+    T_INFL   = Array{Float64}(undef, T, releases_to_keep);
 
     # Loop over the chunks
     for i=1:nyears
@@ -72,28 +81,38 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
         end
         end_ind_i = cumsum(releases_per_year[1:i])[end];
 
+        if start_ind_i > releases_to_keep
+            break;
+        elseif end_ind_i > releases_to_keep
+            end_ind_i = releases_to_keep;
+        end
+
+        # i-th ranges
+        ith_vintage_id_range = start_ind_i:end_ind_i;
+        ith_input_range = 1:end_ind_i-start_ind_i+1;
+
         # Store data from current chunk (forecasts)
-        point_forecasts[:, :, start_ind_i:end_ind_i] = read(raw_results["point_forecasts"]);
-        rw_forecasts[:, :, start_ind_i:end_ind_i]    = read(raw_results["rw_forecasts"]);
-        outturn[:, :, start_ind_i:end_ind_i]         = read(raw_results["outturn"]);
+        point_forecasts[:, :, ith_vintage_id_range] = read(raw_results["point_forecasts"])[:, :, ith_input_range];
+        rw_forecasts[:, :, ith_vintage_id_range]    = read(raw_results["rw_forecasts"])[:, :, ith_input_range];
+        outturn[:, :, ith_vintage_id_range]         = read(raw_results["outturn"])[:, :, ith_input_range];
 
         # Store data from current chunk (output states)
-        output_gap[:, start_ind_i:end_ind_i]       = dropdims_median(read(raw_results["output_gap"]))[1:T, :];
-        potential_output[:, start_ind_i:end_ind_i] = dropdims_median(read(raw_results["potential_output"]))[1:T, :];
-        monthly_gdp[:, start_ind_i:end_ind_i]      = dropdims_median(read(raw_results["potential_output"]) .* (read(raw_results["output_gap"])/100 .+ 1))[1:T, :];
+        output_gap[:, ith_vintage_id_range]       = dropdims_median(read(raw_results["output_gap"]))[1:T, ith_input_range];
+        potential_output[:, ith_vintage_id_range] = dropdims_median(read(raw_results["potential_output"]))[1:T, ith_input_range];
+        monthly_gdp[:, ith_vintage_id_range]      = dropdims_median(read(raw_results["potential_output"]) .* (read(raw_results["output_gap"])/100 .+ 1))[1:T, ith_input_range];
 
         # Store data from current chunk (remaining states)
-        BC_clean[:, start_ind_i:end_ind_i] = dropdims_median(read(raw_results["BC_clean"]))[1:T, :];
-        EP_clean[:, start_ind_i:end_ind_i] = dropdims_median(read(raw_results["EP_clean"]))[1:T, :];
-        BC[:, start_ind_i:end_ind_i]       = dropdims_median(read(raw_results["BC"]))[1:T, :];
-        EP[:, start_ind_i:end_ind_i]       = dropdims_median(read(raw_results["EP"]))[1:T, :];
-        T_INFL[:, start_ind_i:end_ind_i]   = dropdims_median(read(raw_results["T_INFL"]))[1:T, :];
+        BC_clean[:, ith_vintage_id_range] = dropdims_median(read(raw_results["BC_clean"]))[1:T, ith_input_range];
+        EP_clean[:, ith_vintage_id_range] = dropdims_median(read(raw_results["EP_clean"]))[1:T, ith_input_range];
+        BC[:, ith_vintage_id_range]       = dropdims_median(read(raw_results["BC"]))[1:T, ith_input_range];
+        EP[:, ith_vintage_id_range]       = dropdims_median(read(raw_results["EP"]))[1:T, ith_input_range];
+        T_INFL[:, ith_vintage_id_range]   = dropdims_median(read(raw_results["T_INFL"]))[1:T, ith_input_range];
 
         # Optional routine
         if remove_forecast_path
 
             # Loop over the vintages
-            for v=start_ind_i:end_ind_i
+            for v=ith_vintage_id_range
 
                 # If not all nans
                 if sum(isnan.(output_gap[:, v])) != T
@@ -123,16 +142,16 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
     # Create the vintages
     data_vintages     = zeros(size(point_forecasts));
     raw_data_vintages = read(chunk0["data_vintages"]);
-    last_data_vintage = raw_data_vintages[end];
+    last_data_vintage = raw_data_vintages[releases_to_keep];
 
     # Loop over the vintages
-    for v=1:size(data_vintages,3)
+    for v=1:releases_to_keep
 
         # Loop over the variables
         for i=1:n
 
             # v-th vintage, i-th variable
-            raw_data_vintage_i_v = raw_data_vintages[v][:,data_order[i]]
+            raw_data_vintage_i_v = raw_data_vintages[v][:,data_order[i]];
             start_ind_i = maximum(findall(.~(ismissing.(raw_data_vintage_i_v))));
 
             # Raw_data
@@ -145,7 +164,9 @@ function load_oos_recon(nyears, model_folder, is_baseline; remove_forecast_path=
         end
     end
 
-    date = sort(unique(read(chunk0["df_vintages"])[!, :date]));
+    date = sort(unique(read(chunk0["df_vintages"])[!, :date]))[1:T-h];
+
+    @info("Loading complete");
 
     return point_forecasts, rw_forecasts, outturn, data_vintages, date, h, n, chunk0,
            monthly_gdp, output_gap, potential_output, BC_clean, EP_clean, BC, EP, T_INFL;
