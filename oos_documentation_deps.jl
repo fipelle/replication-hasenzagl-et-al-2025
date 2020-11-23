@@ -5,8 +5,14 @@
 using JLD, FileIO;
 using DataFrames;
 using XLSX;
-using Plots, Measures;
+using Colors, PlotlyJS;
+using ORCA, PlotlyBase;
 using Dates, Statistics;
+
+# Colors
+c1 = "rgba(0, 48, 158, .75)";
+c2 = "rgba(255, 0, 0, .75)";
+c3 = "rgba(255, 190, 0, .75)";
 
 
 # ----------------------------------------------------------------------------------------------------------------------
