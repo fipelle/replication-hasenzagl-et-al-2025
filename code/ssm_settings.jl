@@ -13,7 +13,7 @@ function ssm_settings(y, h, nDraws, burnin, σʸ, quarterly_position, estim_bool
 
     d    = zeros(n+nR);
     d[2] = 1;
-    Z    = [[ones(4); 0; ones(n-5)] [zeros(1,3); ones(3,3); zeros(1,3); ones(n-5,3)] [zeros(4); ones(n-4)] zeros(n) [zeros(5); 1 ./ σʸ[end-2:end]]];
+    Z    = [[ones(4); 0; ones(n-5)] zeros(n) [zeros(1,3); ones(3,3); zeros(1,3); ones(n-5,3)] [zeros(4); ones(n-4)] zeros(n) [zeros(5); 1 ./ σʸ[end-2:end]]];
 
     # Other loadings
     Z1 = permutedims(kron(Matrix(I,3,3), [1, 0, 1]));                                                                                     # idio C, idio C+, idio trend
@@ -21,7 +21,7 @@ function ssm_settings(y, h, nDraws, burnin, σʸ, quarterly_position, estim_bool
     Z  = [Z cat(dims=[1,2], [1 0 1 ./ σʸ[1]], [1.0 0.0], Z1, Z2, [1.0 0.0 1.0])]; # No idio trend for SPF
 
     # Link GDP SPF with GDP (trend and drift)
-    Z[2, 10] = 3 ./ σʸ[2];
+    Z[2, 11] = 3 ./ σʸ[2];
 
     # Mixed frequency restriction for quarterly variables
     nQ                                        = convert(Int64, sum(quarterly_position));    # No. quarterly variables
@@ -63,13 +63,13 @@ function ssm_settings(y, h, nDraws, burnin, σʸ, quarterly_position, estim_bool
     R_ind = zeros(size(R)) .!= 0; # R .!= 0;
 
     # Projections
-    Z_ind[2:4, [1,2,3,4]] .= true; # Real               -> PC cycle, t, t-1, t-2, t-3
-    Z_ind[6:n, [1,2,3,4]] .= true; # Prices             -> PC cycle, t, t-1, t-2, t-3
-    Z_ind[6:n, 5]         .= true; # Prices             -> EP cycle, t (no lags)
+    Z_ind[2:4, [1,3,4,5]] .= true; # Real               -> PC cycle, t, t-1, t-2, t-3
+    Z_ind[6:n, [1,3,4,5]] .= true; # Prices             -> PC cycle, t, t-1, t-2, t-3
+    Z_ind[6:n, 6]         .= true; # Prices             -> EP cycle, t (no lags)
 
     # estim_bool == true is for consumer expectations in percentage of balance (not the default option)
     if estim_bool == true
-        Z_ind[n, 7] .= true; # EC expectations -> T
+        Z_ind[n, 8] .= true; # EC expectations -> T
     end
 
     restr_d_SPF = false;
@@ -80,13 +80,13 @@ function ssm_settings(y, h, nDraws, burnin, σʸ, quarterly_position, estim_bool
     # -----------------------------------------------------------------------------------------------------------------
 
     c             = zeros(size(Z)[2]);
-    ind_trends    = [10; 18]; # GDP DRIFT, EMPL
+    ind_trends    = [11; 19]; # GDP DRIFT, EMPL
     c[ind_trends] .= 1;  # random walk drift
 
     T_c     = convert(Array{Float64, 2}, [1 0; 0 0]);
     T_ct    = convert(Array{Float64, 2}, [1 0 0; 0 0 0; 0 0 1]);
-    T_c_ext = convert(Array{Float64, 2}, [1 0 0 0; 0 0 0 0; 0 1 0 0; 0 0 1 0]);
-    Q_c_ext = convert(Array{Float64, 2}, [1 0 0 0; 0 0 0 0; 0 0 0 0; 0 0 0 0]);
+    T_c_ext = convert(Array{Float64, 2}, [1 0 0 0 0; 0 0 0 0 0; 1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0]);
+    Q_c_ext = convert(Array{Float64, 2}, [1 0 0 0 0; 0 0 0 0 0; 0 0 0 0 0; 0 0 0 0 0; 0 0 0 0 0]);
 
     T = cat(dims=[1,2], T_c_ext, [T_ct for i=1:2]..., T_c, [T_ct for i=1:3]..., [T_c for i=1:2]..., T_ct, zeros(2*nQ, 2*nQ));
     Q = cat(dims=[1,2], Q_c_ext, [T_ct for i=1:2]..., T_c, [T_ct for i=1:3]..., [T_c for i=1:2]..., T_ct, zeros(2*nQ, 2*nQ));
@@ -99,7 +99,7 @@ function ssm_settings(y, h, nDraws, burnin, σʸ, quarterly_position, estim_bool
     # Initial conditions for the non-stationary states
     P̄_c   = convert(Array{Float64, 2}, [0 0; 0 0]);
     P̄_ct  = convert(Array{Float64, 2}, [0 0 0; 0 0 0; 0 0 1]);
-    P̄¹    = cat(dims=[1,2], zeros(4,4), [P̄_ct for i=1:2]..., P̄_c, [P̄_ct for i=1:3]..., [P̄_c for i=1:2]..., P̄_ct, zeros(2*nQ, 2*nQ));
+    P̄¹    = cat(dims=[1,2], zeros(5,5), [P̄_ct for i=1:2]..., P̄_c, [P̄_ct for i=1:3]..., [P̄_c for i=1:2]..., P̄_ct, zeros(2*nQ, 2*nQ));
 
     # Initial conditions
     α¹ = zeros(size(c));
@@ -108,13 +108,13 @@ function ssm_settings(y, h, nDraws, burnin, σʸ, quarterly_position, estim_bool
     # Trigonometric states
     λ_c   = convert(Array{Float64, 1}, [1; 0]);
     λ_ct  = convert(Array{Float64, 1}, [1; 0; 0]);
-    λ     = vcat([1; zeros(3)], [λ_ct for i=1:2]..., λ_c, [λ_ct for i=1:3]..., [λ_c for i=1:2]..., λ_ct, zeros(2*nQ));
+    λ     = vcat([1; zeros(4)], [λ_ct for i=1:2]..., λ_c, [λ_ct for i=1:3]..., [λ_c for i=1:2]..., λ_ct, zeros(2*nQ));
     ρ     = copy(λ);
     λ_ind = λ .!= 0;
     ρ_ind = copy(λ_ind);
 
     companion_cycle = copy(λ_ind) |> Array{Int64,1};
-    companion_cycle[1] = 3;
+    companion_cycle[1] = 4;
 
 
     # -----------------------------------------------------------------------------------------------------------------
