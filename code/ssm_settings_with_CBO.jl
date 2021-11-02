@@ -85,7 +85,7 @@ function ssm_settings(y, h, nDraws, burnin, σʸ, quarterly_position, estim_bool
 
     T_c     = convert(Array{Float64, 2}, [1 0; 0 0]);
     T_ct    = convert(Array{Float64, 2}, [1 0 0; 0 0 0; 0 0 1]);
-    T_c_ext = convert(Array{Float64, 2}, [1 0 0 0 0; 0 0 0 0 0; 1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0]);
+    T_c_ext = convert(Array{Float64, 2}, [1 0 0 0 0; 0 0 0 0 0; 1 0 0 0 0; 0 0 1 0 0; 0 0 0 1 0]);
     Q_c_ext = convert(Array{Float64, 2}, [1 0 0 0 0; 0 0 0 0 0; 0 0 0 0 0; 0 0 0 0 0; 0 0 0 0 0]);
 
     T = cat(dims=[1,2], T_c_ext, [T_ct for i=1:2]..., T_c, [T_ct for i=1:3]..., [T_c for i=1:2]..., T_ct, zeros(2*nQ, 2*nQ));
