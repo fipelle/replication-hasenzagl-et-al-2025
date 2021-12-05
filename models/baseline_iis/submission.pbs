@@ -1,0 +1,15 @@
+#PBS -S /bin/bash
+#PBS -q batch
+#PBS -l nodes=1:ppn=4
+#PBS -l mem=64gb
+#PBS -l walltime=48:00:00 
+#PBS -N baseline_iss 
+#PBS -o baseline_iss.out 
+#PBS -e baseline_iss.err 
+#PBS -m abe 
+#PBS -M hasen019@umn.edu 
+
+cd $PBS_O_WORKDIR/
+module load julia/1.0.5
+julia -p4 user_main.jl
+

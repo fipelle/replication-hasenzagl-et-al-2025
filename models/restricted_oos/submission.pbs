@@ -1,0 +1,15 @@
+#PBS -S /bin/bash
+#PBS -q multinode 
+#PBS -l nodes=1:ppn=17 
+#PBS -l mem=512gb
+#PBS -l walltime=168:00:00 
+#PBS -N restricted_oos 
+#PBS -o restricted_oos.out 
+#PBS -e restricted_oos.err 
+#PBS -m abe 
+#PBS -M hasen019@umn.edu 
+
+cd $PBS_O_WORKDIR/
+module load julia/1.0.5
+julia -p17 user_main.jl
+

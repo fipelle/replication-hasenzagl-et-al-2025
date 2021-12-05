@@ -93,7 +93,7 @@ Out-of-sample: position of the states and variables of interest [used only when 
 - GDP
 - INFL
 =#
-oos_position = output_position(1, 5, 7, 10, 2, 7);
+oos_position = output_position(1, 6, 8, 11, 2, 7);
 
 # Conditional forecast: conditioning path [used only when run_type == 2]
 cond = Dict();
