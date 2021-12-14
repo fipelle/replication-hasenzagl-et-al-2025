@@ -3,7 +3,7 @@
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Number of (subsequent) oos years to evaluate
-nyears = 16;
+nyears = 17;
 
 # File path
 model_folder = "./models/baseline_oos";
@@ -14,12 +14,15 @@ is_baseline = true;
 # Remove forecast path in the states
 remove_forecast_path = true;
 
-# Number of vintages to exclude from the output
-vintages_to_exclude = 0;
-
 # File name
 output_file_name = "baseline";
 
+# Number of vintages to exclude from the output
+if is_baseline == true
+	vintages_to_exclude = 7;
+elseif is_baseline == false 
+	vintages_to_exclude = 9;
+end
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Extract output from OOS chunks
