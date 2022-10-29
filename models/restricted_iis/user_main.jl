@@ -78,7 +78,7 @@ Alfred settings
 iis_release = Dates.Date("31-12-2019", "dd-mm-yyyy");
 oos_start_date = Dates.Date("01-01-2005", "dd-mm-yyyy");
 start_sample = Dates.Date("01-01-1985", "dd-mm-yyyy");
-end_sample = Dates.Date("30-09-2020", "dd-mm-yyyy");
+end_sample = Dates.Date("30-09-2022", "dd-mm-yyyy");
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Residual settings
